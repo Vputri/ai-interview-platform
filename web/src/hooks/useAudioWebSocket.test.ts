@@ -110,6 +110,37 @@ describe("useAudioWebSocket error routing", () => {
     expect(onStateChange).not.toHaveBeenCalledWith("error", expect.anything());
   });
 
+  // Regression: api/app/channels/audio_websocket_middleware.rb
+  // handle_gemini_close sends this exact message type — {type:
+  // "session_ended", reason: "error"} — when the backend's OWN connection to
+  // Gemini fails for good (e.g. an invalid/retired model name). Checking
+  // only `type` (as above) showed this candidate the same "Interview
+  // Complete, thank you" screen as someone who actually finished, with
+  // nothing ever recorded. See assessment/gap-analysis.md P0-3.
+  it("reports error instead of complete when session_ended carries reason: error", () => {
+    const { hook, onStateChange } = setupHook();
+    act(() => hook.result.current.connect());
+    const ws = FakeWebSocket.instances[0];
+    act(() => ws.simulateOpen());
+
+    act(() => ws.simulateMessage({ type: "session_ended", reason: "error" }));
+
+    expect(onStateChange).toHaveBeenCalledWith("error", { reason: "server_error" });
+    expect(onStateChange).not.toHaveBeenCalledWith("complete");
+  });
+
+  it("still reports complete for session_ended with a real end reason (e.g. all_covered)", () => {
+    const { hook, onStateChange } = setupHook();
+    act(() => hook.result.current.connect());
+    const ws = FakeWebSocket.instances[0];
+    act(() => ws.simulateOpen());
+
+    act(() => ws.simulateMessage({ type: "session_ended", reason: "all_covered" }));
+
+    expect(onStateChange).toHaveBeenCalledWith("complete");
+    expect(onStateChange).not.toHaveBeenCalledWith("error", expect.anything());
+  });
+
   // Regression risk introduced by this very fix: disconnect() maxes out the
   // reconnect counter (to prevent auto-reconnect after a deliberate close),
   // which would otherwise look identical to "reconnect exhausted" once that
