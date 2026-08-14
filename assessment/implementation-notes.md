@@ -10,6 +10,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 |---|---|
 | 1. Tenant Isolation Hardening | https://github.com/rakamindev/ai-interview-platform/pull/6 |
 | 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
+| 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
 
 ---
 
@@ -97,14 +98,40 @@ perubahan Sub-PR 2.
 
 ## Sub-PR 3: Candidate-Facing Error State
 
-- [ ] Kode fix (frontend)
-- [ ] Test
-- [ ] Seeded fault test
-- [ ] Screenshot
+- [x] Kode fix (frontend) — tambah state `"error"` + `InterviewErrorReason` (`fetch_failed`/`connection_lost`/`server_error`) ke `types/index.ts`. 3 titik yang salah route dibenerin: `InterviewPage.tsx` (fetch info kandidat gagal), `useAudioWebSocket.ts` (server kirim error non-recoverable, reconnect abis 3x percobaan) — semua tadinya `onStateChange("complete")`, sekarang `onStateChange("error", {reason, message?})`. Render block baru `InterviewErrorScreen` beda pesan per reason, gak pernah bilang "recorded"/"thank you".
+- [x] Test — 6 Vitest baru: 2 buat `InterviewPage` (fetch gagal → error screen bukan complete; sesi beneran `ended` → tetep complete, regression check), 4 buat `useAudioWebSocket` pake fake `WebSocket` + fake timer (server error non-recoverable, reconnect exhausted, session_ended tetep complete, manual disconnect gak ke-flag error).
+- [x] Seeded fault test: branch `scratch/seeded-fault-candidate-error-state` — balikin cabang "reconnect exhausted" ke `onStateChange("complete")` (bug lama), test yang bersangkutan merah, revert via `git revert`, ijo lagi.
+- [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah.
 
 ### AI Verification Moment
+Pas nulis fix ini, gue trace semua caller `disconnect()` di `useAudioWebSocket`
+sebelum nganggep kelar (bukan cuma titik yang diminta AC). Ketemu: `disconnect()`
+(dipanggil `endInterview` pas candidate klik "End Interview") **sengaja**
+nge-max-in `reconnectAttemptsRef` biar gak auto-reconnect — efek sampingnya,
+`ws.onclose` yang kepicu abis `disconnect()` bakal lolos kondisi
+`attempt < RECONNECT_DELAYS.length` (karena udah di-max-in), masuk exact
+branch yang sama kayak "reconnect exhausted".
+
+Sebelum fix, ini harmless (branch itu manggil `onStateChange("complete")`,
+dan state udah "complete" duluan dari `endInterview` — no-op dobel). **Tapi
+kalau gue ganti branch itu jadi `onStateChange("error", ...)` tanpa nyadar
+ini, setiap kali candidate klik "End Interview" normal bakal ke-flip ke
+layar error** — regresi baru yang gue sendiri introduce, bukan bug lama.
+Fix: tambah `manualDisconnectRef` yang di-set `disconnect()`, dicek di
+`onclose` bareng `sessionEndedRef` sebelum masuk logic reconnect/error. Ada
+test spesifik ("does not report an error when the candidate manually ends
+the interview") yang mastiin ini gak keulang.
 
 ### Catatan lain
+- Vitest buat `InterviewPage` awalnya mau mount komponen penuh, tapi
+  `HardwareCheck` manggil `getUserMedia`/`AudioContext` yang jsdom gak
+  implementasiin (throw sinkron, bukan reject promise) — daripada polyfill
+  seluruh Web Audio API, `HardwareCheck` di-mock jadi `null` di test (gak
+  relevan sama fix yang lagi dites).
+- Branch ini (`fix/candidate-error-state`) di-branch dari `main`, jadi
+  belum ada Vitest setup dari Sub-PR 2 — di-bawa manual via `git checkout
+  fix/not-assessed-skill-state -- web/vite.config.ts web/src/test/ ...`
+  (pola sama kayak assessment/ di Sub-PR 2).
 
 ---
 
