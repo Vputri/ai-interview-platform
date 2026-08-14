@@ -11,9 +11,6 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 1. Tenant Isolation Hardening | https://github.com/rakamindev/ai-interview-platform/pull/6 |
 | 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
-| 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
-| Bonus: Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
-| Bonus 2: Invite Link Wrong Origin (P0-6) | https://github.com/rakamindev/ai-interview-platform/pull/11 |
 
 ---
 
@@ -101,7 +98,61 @@ perubahan Sub-PR 2.
 
 ## Sub-PR 3: Candidate-Facing Error State
 
-- [ ] Kode fix (frontend)
+- [x] Kode fix (frontend) — tambah state `"error"` + `InterviewErrorReason` (`fetch_failed`/`connection_lost`/`server_error`) ke `types/index.ts`. 3 titik yang salah route dibenerin: `InterviewPage.tsx` (fetch info kandidat gagal), `useAudioWebSocket.ts` (server kirim error non-recoverable, reconnect abis 3x percobaan) — semua tadinya `onStateChange("complete")`, sekarang `onStateChange("error", {reason, message?})`. Render block baru `InterviewErrorScreen` beda pesan per reason, gak pernah bilang "recorded"/"thank you".
+- [x] Test — 6 Vitest baru: 2 buat `InterviewPage` (fetch gagal → error screen bukan complete; sesi beneran `ended` → tetep complete, regression check), 4 buat `useAudioWebSocket` pake fake `WebSocket` + fake timer (server error non-recoverable, reconnect exhausted, session_ended tetep complete, manual disconnect gak ke-flag error).
+- [x] Seeded fault test: branch `scratch/seeded-fault-candidate-error-state` — balikin cabang "reconnect exhausted" ke `onStateChange("complete")` (bug lama), test yang bersangkutan merah, revert via `git revert`, ijo lagi.
+- [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah.
+- [x] **Follow-up ditemuin pas testing manual end-to-end** (bukan dari 3 titik awal): `handle_gemini_close` di backend ngirim `type: 'session_ended', reason: 'error'` pas koneksi Rails↔Gemini gagal permanen (kejadian beneran pas testing dengan model Gemini yang basi/404). Frontend cuma ngecek `type`, gak ngecek `reason` — kegagalan ini ikutan ke-samarkan jadi "Complete". Fix: `session_ended` case sekarang ngecek `msg.reason === 'error'` → route ke `"error"` state, reason lain (`all_covered`, `manual_candidate`, dst) tetep `"complete"`. +2 Vitest, seeded fault test sendiri (`scratch/seeded-fault-session-ended-reason`).
+
+### AI Verification Moment
+Pas nulis fix ini, gue trace semua caller `disconnect()` di `useAudioWebSocket`
+sebelum nganggep kelar (bukan cuma titik yang diminta AC). Ketemu: `disconnect()`
+(dipanggil `endInterview` pas candidate klik "End Interview") **sengaja**
+nge-max-in `reconnectAttemptsRef` biar gak auto-reconnect — efek sampingnya,
+`ws.onclose` yang kepicu abis `disconnect()` bakal lolos kondisi
+`attempt < RECONNECT_DELAYS.length` (karena udah di-max-in), masuk exact
+branch yang sama kayak "reconnect exhausted".
+
+Sebelum fix, ini harmless (branch itu manggil `onStateChange("complete")`,
+dan state udah "complete" duluan dari `endInterview` — no-op dobel). **Tapi
+kalau gue ganti branch itu jadi `onStateChange("error", ...)` tanpa nyadar
+ini, setiap kali candidate klik "End Interview" normal bakal ke-flip ke
+layar error** — regresi baru yang gue sendiri introduce, bukan bug lama.
+Fix: tambah `manualDisconnectRef` yang di-set `disconnect()`, dicek di
+`onclose` bareng `sessionEndedRef` sebelum masuk logic reconnect/error. Ada
+test spesifik ("does not report an error when the candidate manually ends
+the interview") yang mastiin ini gak keulang.
+
+**Follow-up (ditemuin user pas testing manual, bukan gue duluan)**: 3 titik
+yang gue fix awal semua di sisi FRONTEND (browser↔Rails). Ternyata ada
+jalur ke-4 yang lolos: BACKEND↔Gemini gagal permanen, dan backend punya
+logic sendiri (`handle_gemini_close`) buat nutup sesi — ngirim
+`session_ended` juga, tapi nyempilin `reason: 'error'` yang gak pernah
+gue cek. Pelajaran: pas nutup 1 kelas bug ("X ke-samarkan jadi Complete"),
+gak cukup trace SATU sisi (frontend) doang — harus trace SEMUA pengirim
+message yang bisa nyampe ke case yang sama, termasuk yang dari backend.
+Audit awal gue soal `handle_gemini_close` (waktu survey api/) sebenernya
+udah nyebut behavior ini ("force-ended, reason: error") tapi gue gak
+nyambungin ke pengecekan frontend-nya — gap antara 2 audit yang
+kelewatan.
+
+### Catatan lain
+- Vitest buat `InterviewPage` awalnya mau mount komponen penuh, tapi
+  `HardwareCheck` manggil `getUserMedia`/`AudioContext` yang jsdom gak
+  implementasiin (throw sinkron, bukan reject promise) — daripada polyfill
+  seluruh Web Audio API, `HardwareCheck` di-mock jadi `null` di test (gak
+  relevan sama fix yang lagi dites).
+- Branch ini (`fix/candidate-error-state`) di-branch dari `main`, jadi
+  belum ada Vitest setup dari Sub-PR 2 — di-bawa manual via `git checkout
+  fix/not-assessed-skill-state -- web/vite.config.ts web/src/test/ ...`
+  (pola sama kayak assessment/ di Sub-PR 2).
+
+---
+
+## Sub-PR 4: Hardware Check Reliability
+
+- [ ] Endpoint baru di api/
+- [ ] Kode fix (frontend + backend)
 - [ ] Test
 - [ ] Seeded fault test
 - [ ] Screenshot
@@ -109,122 +160,6 @@ perubahan Sub-PR 2.
 ### AI Verification Moment
 
 ### Catatan lain
-
----
-
-## Sub-PR 4: Hardware Check Reliability
-
-- [x] Endpoint baru di api/ — `GET /api/v1/speed_test/download` (proc route, 500KB payload tetap, gak butuh auth, gak butuh controller — pola sama kayak `POST /speed_test` upload yang udah ada duluan). Ditambah throttle 20/menit/IP di `rack_attack.rb` (endpoint pre-session, unauthenticated, butuh limit sendiri).
-- [x] Kode fix backend — cuma endpoint baru di atas, gak ada perubahan lain.
-- [x] Kode fix frontend — `internetSpeedTest.ts` ditulis ulang: default ping/download/upload sekarang ke backend sendiri (`API_BASE_URL` di-export dari `services/api.ts`), bukan `httpbin.org`/jsdelivr/unpkg lagi. Kalau semua pengukuran gagal total → `status: "inconclusive"` (bukan angka fallback fiktif). Kalau sebagian doang yang gagal → tetep `inconclusive`, bukan `failed` (data gak lengkap gak layak dipake buat nge-fail kandidat). `ProctoringState` tambah `WARNING` — hasil inconclusive gak ngeblok `allPassed` (beda dari `ERROR` yang beneran ngeblok "Start Interview").
-- [x] Test — 2 RSpec (endpoint download ukurannya bener + no-auth, endpoint upload lama tetep jalan) + 3 Vitest (`testInternetSpeed`: semua gagal → inconclusive+null, semua sukses → passed, sebagian doang sukses → tetep inconclusive bukan failed).
-- [x] Seeded fault test: branch `scratch/seeded-fault-hardware-check` — balikin logic "semua gagal" ke return angka fallback lama (`0.5`), test inconclusive merah, revert, ijo lagi.
-- [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah. Endpoint baru juga udah diverifikasi manual via `curl` ke server dev yang lagi jalan (200, size persis 500000 byte).
-
-### AI Verification Moment
-Awalnya gue mau bikin status cuma `passed`/`failed` (boolean lama diganti union
-2 nilai doang). Tapi pas nulis logic "kalau sebagian metric gagal diukur"
-(misal ping berhasil tapi download/upload gagal semua — kondisi realistis
-kalau ada 1 dari 2 endpoint kena rate-limit/network hiccup sesaat), sadar
-kalau data separuh itu **gak cukup buat bilang koneksi kandidat jelek** —
-motong kandidat berdasarkan setengah data itu sama salahnya kayak bug asli
-(P0-5) yang lagi diperbaiki. Ganti jadi 3 status (`passed`/`failed`/
-`inconclusive`), dan `inconclusive` jadi default kalau pengukurannya gak
-lengkap, bukan cuma kalau semuanya gagal total. Ada test spesifik
-("returns inconclusive rather than failed when only some metrics could be
-measured") yang mastiin distinction ini beneran jalan, bukan cuma niat di
-komentar.
-
-### Catatan lain
-- Endpoint `speed_test/download` sengaja proc route polos (bukan
-  controller), ngikutin pola persis endpoint upload yang udah ada — gak
-  butuh auth/tenant karena dipanggil sebelum kandidat punya session/JWT.
-- `env`-var override (`VITE_SPEED_TEST_PING_URL` dkk) tetep dihormatin
-  kalau ada yang mau pakai endpoint lain — cuma defaultnya diganti dari
-  kosong (jatuh ke pihak ketiga) jadi backend sendiri.
-
----
-
-## Bonus (P1): Auth & Session Hardening (P1-4, P1-5, P1-6)
-
-- [x] Migration — 1 baru: `add_column :users, :active, :boolean, default: true, null: false` (P1-5). Reversible, di-test rollback+migrate ulang bersih. P1-4 gak butuh migration (reuse `created_at`).
-- [x] Kode fix:
-  - P1-6: hapus fallback `VITE_DEV_TOKEN` dari `authAtom.ts#getStoredToken()`. Bersihin dokumentasi env var yang udah gak kepake (`web/.env.example`, `web/README.md`).
-  - P1-4: `Session#invite_expired?` (`pending? && created_at < 7.days.ago`), dicek di `candidate_info` + `audio_complete` → `410 Gone` kalau expired.
-  - P1-5: `AuthorizeApiRequest#account_active?` — cek kolom `active` di `users`, di-cache `Rails.cache` 60 detik, **scoped ke role `admin` doang** (role `assessor` dari app sister gak ada di tabel lokal, lihat Constraint Signal #6 di gap-analysis.md).
-- [x] Test — 3 Vitest (`authAtom`: no fallback ke env var, token asli tetep jalan, clear abis logout) + 11 RSpec (4 `Session#invite_expired?`, 4 request spec candidate invite expiry, 3 request spec account revocation termasuk regression check buat role `assessor`).
-- [x] Seeded fault test: 3 branch scratch terpisah (`scratch/seeded-fault-dev-token-bypass`, `scratch/seeded-fault-invite-expiry`, `scratch/seeded-fault-account-revocation`) — tiap satu balikin 1 fix ke kondisi bug, test yang bersangkutan merah, revert via `git revert`, ijo lagi.
-- [x] Screenshot: dari transcript sesi + output test.
-
-### AI Verification Moment
-Rencana awal P1-5: cek `active` user via query DB langsung tiap request
-(paling simpel). Tapi pas mau nulis, ke-inget `AuthorizeApiRequest` punya
-komentar eksplisit "Does NOT hit the database for user lookup — trusts the
-JWT claims" — itu keputusan desain sengaja, bukan kelalaian. Investigasi
-lebih lanjut ke `AuthenticationController`/`User` model nemuin fakta penting:
-tabel `users` di app ini **cuma buat akun admin lokal** — role `assessor`
-via `ASSESSOR_ROLES = %w[admin assessor]` diterbitin app sister
-`rakamin-api` (JWT dipakai bareng, `SECRET_KEY_BASE` sama), dan akun
-`assessor` itu **gak ada row-nya di tabel `users` app ini sama sekali**.
-
-Kalau gue asal query `User.find(user_id)` tanpa nyadar ini, kode bakal
-korban 2 arah: (1) kalau `id` gak ketemu di tabel lokal, query gagal/return
-nil, harus diputusin gimana treat-nya — kalau salah putusan (misal anggap
-"gak ketemu = ditolak"), **semua token `assessor` dari app sister bakal
-ke-block**, regresi besar yang blocking fitur yang emang lagi "planned"; (2)
-kalaupun `nil` di-anggap "boleh lewat" buat aman, itu sama aja gak ngecek
-apa-apa buat kasus assessor. Fix: scope pengecekan `account_active?` cuma
-buat `role == 'admin'`, biarin role lain lewat tanpa disentuh — precise
-fix, bukan defensive-tapi-salah. Ada test spesifik ("does not affect
-assessor-role tokens...") yang mastiin ini.
-
-Verifikasi kedua: nebak `ExceptionHandler::Unauthorized` bakal ngasih HTTP
-401 (nama exception-nya emang "Unauthorized"). Test gagal, actual-nya 403.
-Baca `exception_handler.rb` langsung: exception ini sengaja di-map ke 403
-(dianggap "authenticated tapi gak diizinkan," bukan "gak keautentikasi
-sama sekali") — konsisten sama gimana `check_role!` yang udah ada
-berperilaku. Ganti ekspektasi test, bukan paksa app-nya ngikutin asumsi
-awal yang salah.
-
-### Catatan lain
-- `Rails.cache` di test env pake `:null_store` (liat
-  `config/environments/test.rb:24`) — artinya cache 60-detik P1-5 **gak
-  pernah kejadian pas test**, tiap fetch selalu fresh dari DB. Behavior
-  staleness-nya sengaja gak dites otomatis (susah dites deterministik
-  tanpa mocking waktu/cache backend) — cukup diverifikasi lewat kode +
-  reasoning di revamp-strategy.md.
-- P1-1, P1-2, P1-3 tetep gak digarap — investigasinya belum sedalam 3 ini,
-  didokumentasiin di gap-analysis.md sebagai deferred.
-
----
-
-## Bonus 2: Invite Link Wrong Origin (P0-6)
-
-- [x] Kode fix: `Session#invite_url` ganti dari `APP_BASE_URL` ke
-  `FRONTEND_BASE_URL` (baru, default `http://localhost:5173`). Update
-  `api/README.md` + `application.yml.sample` biar beda fungsi 2 env var
-  itu jelas.
-- [x] Test — 2 RSpec (`invite_url` pake `FRONTEND_BASE_URL` kalau di-set;
-  default ke Vite dev server kalau gak di-set).
-- [x] Seeded fault test: branch `scratch/seeded-fault-invite-url-origin` —
-  balikin ke `APP_BASE_URL`, test merah, revert, ijo lagi.
-- [x] Screenshot: dari transcript sesi (bukti manual "Copy link" ngasih
-  Rails routing error sebelum fix).
-
-### AI Verification Moment
-Ini kebalikan dari kebanyakan temuan lain di case study ini — bukan gue
-yang nemuin lewat baca kode/audit, tapi user yang nemuin lewat **manual
-testing beneran** ("Copy link" terus dibuka di browser, kena Rails
-Routing Error). Itu persis alasan brief minta "test end-to-end di
-browser, bukan cuma baca kode" — bug ini gak keliatan dari code review
-biasa karena kodenya "valid" secara sintaks, cuma env var-nya salah
-sasaran secara semantik (butuh tau `APP_BASE_URL` didokumentasiin buat apa
-vs dipake buat apa, gak ketauan tanpa nyoba beneran).
-
-### Catatan lain
-- Dikerjain di `git worktree` terpisah (`/tmp/invite-url-fix`), bukan di
-  working directory utama — biar gak ganggu kerjaan AI lain yang lagi
-  aktif ngedit banyak file `web/` di working directory yang sama pas itu.
 
 ---
 
