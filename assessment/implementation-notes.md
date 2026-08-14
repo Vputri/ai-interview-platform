@@ -102,6 +102,7 @@ perubahan Sub-PR 2.
 - [x] Test — 6 Vitest baru: 2 buat `InterviewPage` (fetch gagal → error screen bukan complete; sesi beneran `ended` → tetep complete, regression check), 4 buat `useAudioWebSocket` pake fake `WebSocket` + fake timer (server error non-recoverable, reconnect exhausted, session_ended tetep complete, manual disconnect gak ke-flag error).
 - [x] Seeded fault test: branch `scratch/seeded-fault-candidate-error-state` — balikin cabang "reconnect exhausted" ke `onStateChange("complete")` (bug lama), test yang bersangkutan merah, revert via `git revert`, ijo lagi.
 - [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah.
+- [x] **Follow-up ditemuin pas testing manual end-to-end** (bukan dari 3 titik awal): `handle_gemini_close` di backend ngirim `type: 'session_ended', reason: 'error'` pas koneksi Rails↔Gemini gagal permanen (kejadian beneran pas testing dengan model Gemini yang basi/404). Frontend cuma ngecek `type`, gak ngecek `reason` — kegagalan ini ikutan ke-samarkan jadi "Complete". Fix: `session_ended` case sekarang ngecek `msg.reason === 'error'` → route ke `"error"` state, reason lain (`all_covered`, `manual_candidate`, dst) tetep `"complete"`. +2 Vitest, seeded fault test sendiri (`scratch/seeded-fault-session-ended-reason`).
 
 ### AI Verification Moment
 Pas nulis fix ini, gue trace semua caller `disconnect()` di `useAudioWebSocket`
@@ -121,6 +122,19 @@ Fix: tambah `manualDisconnectRef` yang di-set `disconnect()`, dicek di
 `onclose` bareng `sessionEndedRef` sebelum masuk logic reconnect/error. Ada
 test spesifik ("does not report an error when the candidate manually ends
 the interview") yang mastiin ini gak keulang.
+
+**Follow-up (ditemuin user pas testing manual, bukan gue duluan)**: 3 titik
+yang gue fix awal semua di sisi FRONTEND (browser↔Rails). Ternyata ada
+jalur ke-4 yang lolos: BACKEND↔Gemini gagal permanen, dan backend punya
+logic sendiri (`handle_gemini_close`) buat nutup sesi — ngirim
+`session_ended` juga, tapi nyempilin `reason: 'error'` yang gak pernah
+gue cek. Pelajaran: pas nutup 1 kelas bug ("X ke-samarkan jadi Complete"),
+gak cukup trace SATU sisi (frontend) doang — harus trace SEMUA pengirim
+message yang bisa nyampe ke case yang sama, termasuk yang dari backend.
+Audit awal gue soal `handle_gemini_close` (waktu survey api/) sebenernya
+udah nyebut behavior ini ("force-ended, reason: error") tapi gue gak
+nyambungin ke pengecekan frontend-nya — gap antara 2 audit yang
+kelewatan.
 
 ### Catatan lain
 - Vitest buat `InterviewPage` awalnya mau mount komponen penuh, tapi
