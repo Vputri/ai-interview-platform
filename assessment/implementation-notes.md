@@ -9,6 +9,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | Sub-PR | Link |
 |---|---|
 | 1. Tenant Isolation Hardening | https://github.com/rakamindev/ai-interview-platform/pull/6 |
+| 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
 
 ---
 
