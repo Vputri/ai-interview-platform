@@ -16,6 +16,7 @@ Urutan pengerjaan (yang paling berisiko/paling nyakitin kandidat duluan):
 2. Not-Assessed Skill State (P0-4)
 3. Candidate-Facing Error State (P0-3)
 4. Hardware Check Reliability (P0-5)
+5. *(Opsional, ringan, di luar scope P0)* UI/UX & Form Validation Polish
 
 ---
 
@@ -269,38 +270,23 @@ bukan cuma ngurangin gejalanya.
 
 ---
 
-## Sub-PR 5: UI/UX Craftsmanship, Form Validation & Experience Polish (P2-6, P2-8, P3-5)
+## Sub-PR 5 (opsional, ringan): UI/UX & Form Validation Polish
 
-**Root cause**: UI dibuat sebagai prototype awal tanpa visual hierarchy, styling card yang terstruktur, responsive breakpoints yang disengaja, feedback loading/empty state yang jelas, maupun validasi form client-side dengan Zod (walau dependensinya sudah ada).
+Bukan bagian dari 4 sub-PR P0 di atas, dan sengaja gak dikasih perlakuan
+AC + Option A/B selengkap sub-PR P0 — alasannya ada di
+[gap-analysis.md § Catatan Design Polish](gap-analysis.md#catatan-design-polish-di-luar-severity-list):
+ini preferensi craft, bukan defect yang punya trade-off produk beneran
+buat diperdebatkan (bukan "opsi mana yang benar", cuma "sempet dikerjain
+atau nggak").
 
-### Acceptance Criteria
-- **Login Screen Polish**:
-  - Given user membuka `/login`, When halaman dimuat, Then tampil Card modern dengan subtle glass/border depth, brand header + icon, input field ber-icon, show/hide password toggle button, dan demo credentials hint (`admin@example.com / password`).
-  - Given user memasukkan format email tidak valid atau password kosong, When submit ditekan, Then tampil pesan error inline di bawah field yang bersangkutan dengan border merah tanpa trigger network request yang sia-sia.
-  - Given form login sedang memproses request, When loading, Then tombol submit disabled dengan icon spinner dan visual transition yang smooth.
-- **Form Validation & Error States**:
-  - Given form create/edit assessment & custom skills, When ada field kosong/invalid, Then pesan error spesifik dari schema Zod tampil jelas di samping/bawah input (menghilangkan silent failure).
-- **Assessor & Portfolio Experience**:
-  - Given halaman Portfolio (`/portfolio`), When data skill di-render, Then terdapat visualisasi komparasi (Target vs Actual) yang jelas dan badge status visual (`Assessed`, `Not Assessed`, `Override`) yang mudah discan oleh hiring manager.
-- **Responsive & Design System**:
-  - Given aplikasi diakses di berbagai ukuran layar (mobile/tablet/desktop), When window di-resize, Then layout tidak overflow dan tetap ergonomis menggunakan responsive breakpoints Tailwind (`sm:`, `md:`, `lg:`).
+Cakupannya kalau digarap: polish halaman login (card layout, show/hide
+password, state loading/error yang jelas), makein Zod yang udah
+keinstall tapi nganggur ke form utama (assessment, custom skill) biar
+nutup P2-6, dan badge status yang lebih gampang discan di Portfolio page
+(match sama status `assessed`/`not_assessed`/`unparseable` dari Sub-PR 2).
 
-### Option A — Revamp UI Terpusat + Schema Validation Zod (Pilihan Utama)
-Menggunakan design tokens Tailwind & Radix UI yang sudah ada untuk mempercantik komponen inti (Login, Form, Portfolio, Interview), memasang Zod schema validation pada form-form utama, serta menambahkan micro-interactions (loading spinner, password toggle, status badges).
-
-- **Product Impact vs Cost**: **Sangat Tinggi**. Langsung mendongkrak skor Monozukuri (50% rubric), memberikan first impression luar biasa pada video demo 3-5 menit, dan melindungi UX dari input error. Cost terukur karena memanfaatkan styling system yang sudah terinstall.
-- **Maintainability**: Tinggi — Zod schemas terdokumentasi dan reusable di folder `utils/schemas/` atau tipe TypeScript.
-- **Failure Mode**: Sangat minim karena tidak mengubah API payload contract backend.
-- **Contextual Fit**: Menjawab poin non-negotiable disqualifier *"Poor or neglected UI/UX design quality"* dan menutup temuan P2-6 serta P2-8.
-
-### Option B — Styling ad-hoc per-komponen tanpa Schema
-Hanya mengganti CSS inline atau Tailwind ad-hoc di file `LoginPage.tsx` tanpa membuat schema Zod atau merapikan form lain.
-
-- **Product Impact vs Cost**: Cepat dan murah, tapi tidak menyelesaikan inkonsistensi validasi di form assessment dan custom skills.
-- **Maintainability**: Rendah — validasi tetap terfragmentasi.
-- **Contextual Fit**: Kurang optimal untuk membuktikan engineering craftsmanship di hadapan reviewer.
-
-**Keputusan: Option A.** Investasi pada visual taste yang premium dan validasi schema Zod adalah leverage terbesar untuk memenuhi ekspektasi Monozukuri pada submission ini.
+Digarap incremental (mulai dari login page), disubmit sebagai PR terpisah
+di luar 4 sub-PR P0 kapan pun siap ditest — gak ngeblok submission utama.
 
 ---
 
@@ -312,7 +298,6 @@ Hanya mengganti CSS inline atau Tailwind ad-hoc di file `LoginPage.tsx` tanpa me
 | Not-Assessed Skill (P0-4) | A — backend jadi source of truth | PDF export (artefak paling awet) harus ikut bener, gak cukup fix di web doang |
 | Candidate Error State (P0-3) | A — tambah 1 state, additive | Bug-nya sempit, state machine lain udah solid, gak perlu redesign |
 | Hardware Check (P0-5) | A — endpoint sendiri | Env var udah disiapin dari awal, effort kecil, ngilangin dependency luar kontrol |
-| UI/UX & Validation Polish (P2-6/8) | A — centralized UI revamp + Zod | Memenuhi kriteria Monozukuri (50% rubric), WOW-factor video demo & first impression |
 
 Pola yang konsisten di seluruh keputusan: **selalu pilih fix di titik paling akar
 yang effort-nya masih masuk akal buat timeline ini** — bukan opsi paling

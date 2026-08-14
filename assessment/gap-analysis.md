@@ -126,3 +126,21 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 3. **Urutan verifikasi JWT ambigu**: `TenantResolverMiddleware` decode JWT tanpa verifikasi signature duluan (buat resolve tenant), verifikasi signature beneran baru kejadian belakangan di `AuthorizeApiRequest`. Ini "intentional" per komentar kode, tapi susunan begini gampang disalahpahami developer baru dan gampang jadi celah kalau ada yang refactor tanpa ngerti urutannya.
 4. **Dependency pihak ketiga (httpbin.org, jsdelivr, unpkg) ada di jalur yang nge-block kandidat mulai interview.** Ini bukan cuma bug test-nya, ini keputusan produk yang naruh nasib kandidat di tangan uptime layanan yang gak dikontrol platform ini sama sekali.
 5. **Frontend gak punya lapisan validasi terpusat** (Zod terpasang tapi nganggur) dan **gak ada error-handling terpusat** (tiap halaman re-implement pattern try/catch sendiri-sendiri, kualitasnya beda-beda). Ini bukan sekadar kerapian kode — inkonsistensi ini yang bikin sebagian besar temuan P0/P1/P2 di sisi web (silent catch, crash gak ke-isolate, state error yang gak ada) muncul di tempat yang beda-beda alih-alih satu tempat.
+
+---
+
+## Catatan Design Polish (di luar severity list)
+
+Beberapa perbaikan visual (card layout/depth, show/hide password toggle di
+login, skeleton loading, dll) sengaja **gak dimasukin ke daftar P0-P3 di
+atas**. Severity list ini diukur dari "seberapa nyakitin ini ke workflow
+user/kandidat" (persis kayak yang brief minta) — item-item visual itu
+preferensi craft (Monozukuri), bukan defect yang ngerugiin siapapun kalau
+gak dibenerin, jadi maksain kasih level P2/P3 cuma ngelemahin kredibilitas
+severity list yang isinya beneran defect (IDOR, crash, misrepresent skor).
+
+Kerjaan ini tetap dilakuin dan disubmit (kemungkinan sebagai PR terpisah
+di luar 4 sub-PR P0, dibuka belakangan setelah ditest) — cuma dicatet di
+sini sebagai polish, bukan gap severity, dan didokumentasiin ringan di
+[revamp-strategy.md](revamp-strategy.md) tanpa AC/trade-off selengkap
+sub-PR P0.
