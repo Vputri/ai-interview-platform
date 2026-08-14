@@ -398,3 +398,24 @@ ini — cost naik buat manfaat yang belum tentu kepake.
   flag di data yang emang udah dipegang bersama.
 
 **Keputusan: Option A.**
+
+---
+
+## Bonus 2: Invite link nunjuk ke origin yang salah (P0-6)
+
+Ketauan pas manual testing "Copy link" di browser beneran (bukan dari code
+review) — link yang dihasilin nunjuk ke port API (3001), padahal
+`/interview/:token` itu route frontend (Vite). Gak ada trade-off Option
+A/B beneran di sini — ini murni salah pasang env var, bukan keputusan
+desain yang punya sisi lain buat dipertimbangin.
+
+**AC**:
+- Given `FRONTEND_BASE_URL` di-set, When `Session#invite_url` dipanggil,
+  Then hasilnya `"#{FRONTEND_BASE_URL}/interview/#{invite_token}"`.
+- Given `FRONTEND_BASE_URL` gak di-set, When dipanggil, Then default ke
+  `http://localhost:5173` (Vite dev server lokal) — bukan default ke
+  `APP_BASE_URL`/port backend.
+
+**Fix**: tambah env var baru `FRONTEND_BASE_URL`, ganti `invite_url` biar
+pake itu, bukan `APP_BASE_URL`. Update dokumentasi (`README.md`,
+`application.yml.sample`) biar jelas beda fungsi 2 env var itu.

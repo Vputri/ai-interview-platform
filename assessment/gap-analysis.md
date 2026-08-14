@@ -40,6 +40,11 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Lokasi**: `web/src/utils/internetSpeedTest.ts` — test ping/download/upload default ke endpoint pihak ketiga (Google favicon, jsdelivr, unpkg, dan `httpbin.org`/`postman-echo.com` buat upload test, `measureUploadSpeed:90-92`). Kalau ketiganya keblokir (firewall korporat, `httpbin.org` lagi down — sering kejadian), fallback-nya hardcoded **0.5 Mbps** (line 105), padahal threshold minimum `DEFAULT_THRESHOLDS.minUploadMbps = 4` (line 19-23).
 - **Dampak**: Kandidat diblokir total gak bisa mulai interview, murni gara-gara infrastruktur pihak ketiga yang gak ada hubungannya sama koneksi kandidat beneran. `retryAll()` cuma ngulang test yang emang bakal gagal lagi — kandidat kejebak.
 
+### P0-6: "Copy link" ngehasilin invite link yang gak bisa dibuka kandidat sama sekali
+- **Service**: api — **Jenis**: defective implementation
+- **Lokasi**: `api/app/models/session.rb:40-41` (sebelum fix) — `invite_url` bikin link pake `APP_BASE_URL`, yang didokumentasiin eksplisit di `api/README.md:30` dan `application.yml.sample:21` sebagai **"Backend base URL"** (default `http://localhost:3001`). Tapi `/interview/:token` itu route **frontend** (React Router/Vite), bukan route backend.
+- **Dampak**: Di environment manapun frontend & backend beda origin (yang emang normal buat arsitektur two-service ini), tombol "Copy link" yang dipake assessor buat ngundang kandidat ngehasilin URL yang nunjuk ke server API, bukan ke halaman interview. Kandidat yang buka link itu cuma dapet Rails routing error. Ini nutup **happy path paling dasar** — kandidat gak bisa mulai interview sama sekali lewat jalur utama, ditemuin pas manual testing "Copy link" beneran di browser.
+
 ---
 
 ## P1 — Rusak signifikan, belum sampai bocor data tapi bisa hilangin hasil kerja atau salah gambarin kandidat
@@ -119,6 +124,7 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - Error handling di `useAudioCapture`/`useAudioWebSocket` ada tapi salah kanal (masuk ke state "complete" bukan state error) (P0-3, P1-2)
 - Zod/RHF resolver udah terpasang sebagai dependency tapi gak pernah dipakai (P2-6)
 - `getStoredToken()` fallback ke `VITE_DEV_TOKEN` bikin logout gak beneran ngelogout selama env var itu keisi — dikonfirmasi reproduce (P1-6)
+- `invite_url` salah pake env var — niatnya bikin link buat kandidat, kepake `APP_BASE_URL` yang emang didokumentasiin buat backend sendiri (P0-6)
 
 ---
 

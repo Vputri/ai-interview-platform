@@ -13,6 +13,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
 | 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
 | Bonus: Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
+| Bonus 2: Invite Link Wrong Origin (P0-6) | https://github.com/rakamindev/ai-interview-platform/pull/11 |
 
 ---
 
@@ -194,6 +195,36 @@ awal yang salah.
   reasoning di revamp-strategy.md.
 - P1-1, P1-2, P1-3 tetep gak digarap — investigasinya belum sedalam 3 ini,
   didokumentasiin di gap-analysis.md sebagai deferred.
+
+---
+
+## Bonus 2: Invite Link Wrong Origin (P0-6)
+
+- [x] Kode fix: `Session#invite_url` ganti dari `APP_BASE_URL` ke
+  `FRONTEND_BASE_URL` (baru, default `http://localhost:5173`). Update
+  `api/README.md` + `application.yml.sample` biar beda fungsi 2 env var
+  itu jelas.
+- [x] Test — 2 RSpec (`invite_url` pake `FRONTEND_BASE_URL` kalau di-set;
+  default ke Vite dev server kalau gak di-set).
+- [x] Seeded fault test: branch `scratch/seeded-fault-invite-url-origin` —
+  balikin ke `APP_BASE_URL`, test merah, revert, ijo lagi.
+- [x] Screenshot: dari transcript sesi (bukti manual "Copy link" ngasih
+  Rails routing error sebelum fix).
+
+### AI Verification Moment
+Ini kebalikan dari kebanyakan temuan lain di case study ini — bukan gue
+yang nemuin lewat baca kode/audit, tapi user yang nemuin lewat **manual
+testing beneran** ("Copy link" terus dibuka di browser, kena Rails
+Routing Error). Itu persis alasan brief minta "test end-to-end di
+browser, bukan cuma baca kode" — bug ini gak keliatan dari code review
+biasa karena kodenya "valid" secara sintaks, cuma env var-nya salah
+sasaran secara semantik (butuh tau `APP_BASE_URL` didokumentasiin buat apa
+vs dipake buat apa, gak ketauan tanpa nyoba beneran).
+
+### Catatan lain
+- Dikerjain di `git worktree` terpisah (`/tmp/invite-url-fix`), bukan di
+  working directory utama — biar gak ganggu kerjaan AI lain yang lagi
+  aktif ngedit banyak file `web/` di working directory yang sama pas itu.
 
 ---
 

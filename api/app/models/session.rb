@@ -37,8 +37,13 @@ class Session < ApplicationRecord
     pending? && created_at < INVITE_TTL.ago
   end
 
+  # /interview/:token is a frontend (React Router / Vite) route, not a
+  # backend one — must NOT use APP_BASE_URL (the backend's own address,
+  # e.g. http://localhost:3001). Using the wrong origin here means every
+  # "Copy link" sends the assessor a link the candidate can never open.
+  # See assessment/gap-analysis.md P0-6.
   def invite_url
-    base = ENV.fetch('APP_BASE_URL', 'http://localhost:3001')
+    base = ENV.fetch('FRONTEND_BASE_URL', 'http://localhost:5173')
     "#{base}/interview/#{invite_token}"
   end
 
