@@ -11,6 +11,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 1. Tenant Isolation Hardening | https://github.com/rakamindev/ai-interview-platform/pull/6 |
 | 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
+| 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
 
 ---
 
@@ -98,47 +99,7 @@ perubahan Sub-PR 2.
 
 ## Sub-PR 3: Candidate-Facing Error State
 
-- [x] Kode fix (frontend) — tambah state `"error"` + `InterviewErrorReason` (`fetch_failed`/`connection_lost`/`server_error`) ke `types/index.ts`. 3 titik yang salah route dibenerin: `InterviewPage.tsx` (fetch info kandidat gagal), `useAudioWebSocket.ts` (server kirim error non-recoverable, reconnect abis 3x percobaan) — semua tadinya `onStateChange("complete")`, sekarang `onStateChange("error", {reason, message?})`. Render block baru `InterviewErrorScreen` beda pesan per reason, gak pernah bilang "recorded"/"thank you".
-- [x] Test — 6 Vitest baru: 2 buat `InterviewPage` (fetch gagal → error screen bukan complete; sesi beneran `ended` → tetep complete, regression check), 4 buat `useAudioWebSocket` pake fake `WebSocket` + fake timer (server error non-recoverable, reconnect exhausted, session_ended tetep complete, manual disconnect gak ke-flag error).
-- [x] Seeded fault test: branch `scratch/seeded-fault-candidate-error-state` — balikin cabang "reconnect exhausted" ke `onStateChange("complete")` (bug lama), test yang bersangkutan merah, revert via `git revert`, ijo lagi.
-- [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah.
-
-### AI Verification Moment
-Pas nulis fix ini, gue trace semua caller `disconnect()` di `useAudioWebSocket`
-sebelum nganggep kelar (bukan cuma titik yang diminta AC). Ketemu: `disconnect()`
-(dipanggil `endInterview` pas candidate klik "End Interview") **sengaja**
-nge-max-in `reconnectAttemptsRef` biar gak auto-reconnect — efek sampingnya,
-`ws.onclose` yang kepicu abis `disconnect()` bakal lolos kondisi
-`attempt < RECONNECT_DELAYS.length` (karena udah di-max-in), masuk exact
-branch yang sama kayak "reconnect exhausted".
-
-Sebelum fix, ini harmless (branch itu manggil `onStateChange("complete")`,
-dan state udah "complete" duluan dari `endInterview` — no-op dobel). **Tapi
-kalau gue ganti branch itu jadi `onStateChange("error", ...)` tanpa nyadar
-ini, setiap kali candidate klik "End Interview" normal bakal ke-flip ke
-layar error** — regresi baru yang gue sendiri introduce, bukan bug lama.
-Fix: tambah `manualDisconnectRef` yang di-set `disconnect()`, dicek di
-`onclose` bareng `sessionEndedRef` sebelum masuk logic reconnect/error. Ada
-test spesifik ("does not report an error when the candidate manually ends
-the interview") yang mastiin ini gak keulang.
-
-### Catatan lain
-- Vitest buat `InterviewPage` awalnya mau mount komponen penuh, tapi
-  `HardwareCheck` manggil `getUserMedia`/`AudioContext` yang jsdom gak
-  implementasiin (throw sinkron, bukan reject promise) — daripada polyfill
-  seluruh Web Audio API, `HardwareCheck` di-mock jadi `null` di test (gak
-  relevan sama fix yang lagi dites).
-- Branch ini (`fix/candidate-error-state`) di-branch dari `main`, jadi
-  belum ada Vitest setup dari Sub-PR 2 — di-bawa manual via `git checkout
-  fix/not-assessed-skill-state -- web/vite.config.ts web/src/test/ ...`
-  (pola sama kayak assessment/ di Sub-PR 2).
-
----
-
-## Sub-PR 4: Hardware Check Reliability
-
-- [ ] Endpoint baru di api/
-- [ ] Kode fix (frontend + backend)
+- [ ] Kode fix (frontend)
 - [ ] Test
 - [ ] Seeded fault test
 - [ ] Screenshot
@@ -146,6 +107,39 @@ the interview") yang mastiin ini gak keulang.
 ### AI Verification Moment
 
 ### Catatan lain
+
+---
+
+## Sub-PR 4: Hardware Check Reliability
+
+- [x] Endpoint baru di api/ — `GET /api/v1/speed_test/download` (proc route, 500KB payload tetap, gak butuh auth, gak butuh controller — pola sama kayak `POST /speed_test` upload yang udah ada duluan). Ditambah throttle 20/menit/IP di `rack_attack.rb` (endpoint pre-session, unauthenticated, butuh limit sendiri).
+- [x] Kode fix backend — cuma endpoint baru di atas, gak ada perubahan lain.
+- [x] Kode fix frontend — `internetSpeedTest.ts` ditulis ulang: default ping/download/upload sekarang ke backend sendiri (`API_BASE_URL` di-export dari `services/api.ts`), bukan `httpbin.org`/jsdelivr/unpkg lagi. Kalau semua pengukuran gagal total → `status: "inconclusive"` (bukan angka fallback fiktif). Kalau sebagian doang yang gagal → tetep `inconclusive`, bukan `failed` (data gak lengkap gak layak dipake buat nge-fail kandidat). `ProctoringState` tambah `WARNING` — hasil inconclusive gak ngeblok `allPassed` (beda dari `ERROR` yang beneran ngeblok "Start Interview").
+- [x] Test — 2 RSpec (endpoint download ukurannya bener + no-auth, endpoint upload lama tetep jalan) + 3 Vitest (`testInternetSpeed`: semua gagal → inconclusive+null, semua sukses → passed, sebagian doang sukses → tetep inconclusive bukan failed).
+- [x] Seeded fault test: branch `scratch/seeded-fault-hardware-check` — balikin logic "semua gagal" ke return angka fallback lama (`0.5`), test inconclusive merah, revert, ijo lagi.
+- [x] Screenshot: dari transcript sesi + output test, belum ada capture terpisah. Endpoint baru juga udah diverifikasi manual via `curl` ke server dev yang lagi jalan (200, size persis 500000 byte).
+
+### AI Verification Moment
+Awalnya gue mau bikin status cuma `passed`/`failed` (boolean lama diganti union
+2 nilai doang). Tapi pas nulis logic "kalau sebagian metric gagal diukur"
+(misal ping berhasil tapi download/upload gagal semua — kondisi realistis
+kalau ada 1 dari 2 endpoint kena rate-limit/network hiccup sesaat), sadar
+kalau data separuh itu **gak cukup buat bilang koneksi kandidat jelek** —
+motong kandidat berdasarkan setengah data itu sama salahnya kayak bug asli
+(P0-5) yang lagi diperbaiki. Ganti jadi 3 status (`passed`/`failed`/
+`inconclusive`), dan `inconclusive` jadi default kalau pengukurannya gak
+lengkap, bukan cuma kalau semuanya gagal total. Ada test spesifik
+("returns inconclusive rather than failed when only some metrics could be
+measured") yang mastiin distinction ini beneran jalan, bukan cuma niat di
+komentar.
+
+### Catatan lain
+- Endpoint `speed_test/download` sengaja proc route polos (bukan
+  controller), ngikutin pola persis endpoint upload yang udah ada — gak
+  butuh auth/tenant karena dipanggil sebelum kandidat punya session/JWT.
+- `env`-var override (`VITE_SPEED_TEST_PING_URL` dkk) tetep dihormatin
+  kalau ada yang mau pakai endpoint lain — cuma defaultnya diganti dari
+  kosong (jatuh ke pihak ketiga) jadi backend sendiri.
 
 ---
 
