@@ -4,6 +4,12 @@ Log kerja pas eksekusi tiap sub-PR di [revamp-strategy.md](revamp-strategy.md).
 Diisi berjalan pas ngoding, bukan direkonstruksi belakangan — biar detail AI
 verification & bukti test gak ke-lupa pas nyusun PDF final.
 
+## Link PR
+
+| Sub-PR | Link |
+|---|---|
+| 1. Tenant Isolation Hardening | https://github.com/rakamindev/ai-interview-platform/pull/6 |
+
 ---
 
 ## Sub-PR 1: Tenant Isolation Hardening
