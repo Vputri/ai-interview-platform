@@ -302,3 +302,99 @@ di luar 4 sub-PR P0 kapan pun siap ditest — gak ngeblok submission utama.
 Pola yang konsisten di seluruh keputusan: **selalu pilih fix di titik paling akar
 yang effort-nya masih masuk akal buat timeline ini** — bukan opsi paling
 murah, bukan juga opsi paling "sempurna secara teori" (ditolak di Sub-PR 3).
+
+---
+
+## Bonus (di luar 4 P0): Auth & Session Hardening (P1-4, P1-5, P1-6)
+
+Di luar 4 sub-PR P0, 3 temuan P1 ini digarap juga karena satu tema
+("kontrol siapa-boleh-masuk gak beneran ketat") dan severity-nya kerasa
+lebih berat dari label "P1"-nya — auth bypass di platform hiring, bukan
+cuma UX glitch. P1-1/2/3 tetep didokumentasiin sebagai deferred (lihat
+gap-analysis.md), gak digarap — investigasinya belum sedalam 3 ini.
+
+### P1-6: Dev token bikin logout gak beneran logout
+
+**AC**: Gak ada opsi/trade-off beneran di sini — cuma bug, hapus fallback-nya.
+- Given `VITE_DEV_TOKEN` keisi di `.env`, When app dimuat tanpa token di
+  `localStorage` (baru pertama kali, atau abis logout), Then user liat
+  halaman login — gak pernah ke-auth otomatis dari env var.
+- Given user udah login (token asli di `localStorage`), When app reload,
+  Then tetep ke-auth normal (regression check).
+
+Fix: hapus `?? import.meta.env.VITE_DEV_TOKEN` dari `getStoredToken()`.
+
+### P1-4: Invite token gak pernah kedaluwarsa
+
+**AC**:
+- Given session `pending` umur < 7 hari, When candidate akses
+  `candidate_info`/`audio_complete`, Then normal (regression check).
+- Given session `pending` umur > 7 hari, When diakses, Then `410 Gone`.
+- Given session udah `active`/`ended` (walau umurnya > 7 hari), When
+  diakses, Then tetep normal — interview yang lagi jalan atau udah kelar
+  gak boleh keblokir aturan ini.
+
+**Option A (dipilih) — TTL diturunin dari `created_at` yang udah ada.**
+Gak ada migration, gak ada kolom baru — `Session#invite_expired?` tinggal
+`pending? && created_at < 7.days.ago`.
+- Product impact vs cost: Cost minimal (0 migration), langsung nutup gap.
+- Maintainability: Simpel, 1 method, gampang di-reason.
+- Contextual fit: Gak ada spec produk yang minta durasi custom per-session
+  — bikin kolom `invite_expires_at` buat itu cuma spekulasi (YAGNI).
+
+**Option B (ditolak) — kolom `invite_expires_at` per-session.**
+Lebih fleksibel (assessor bisa atur durasi beda-beda), tapi butuh migration
+dan gak ada satupun requirement produk yang minta fleksibilitas itu hari
+ini — cost naik buat manfaat yang belum tentu kepake.
+
+**Keputusan: Option A.**
+
+### P1-5: JWT/akun gak pernah di-revoke
+
+**AC**:
+- Given admin `active: false`, When request pake token yang masih valid
+  signature-nya dan belum expired, Then ditolak (403) dalam window ≤60
+  detik dari deaktivasi — bukan nunggu token expired 3 hari.
+- Given admin `active: true` (default), When request, Then jalan normal,
+  gak ada tambahan latency berarti (di-cache).
+- Given token role `assessor` (diterbitin `rakamin-api`, akun-nya gak ada
+  di tabel `users` lokal app ini), When request, Then gak kena efek apa-apa
+  dari perubahan ini — regression check buat token dari app sister.
+- **Constraint yang diterima sadar**: belum ada UI admin buat toggle
+  `active` — hari ini cuma bisa lewat `rails console`/DB langsung. Bikin
+  UI manajemen user itu fitur terpisah yang lebih besar, di luar scope fix
+  keamanan ini.
+
+**Option A (dipilih) — kolom `active` di `users` + cache 60 detik di `AuthorizeApiRequest`, scoped ke role `admin` doang.**
+- Product impact vs cost: Nutup celah paling parah (gak ada cara sama
+  sekali buat cabut akses) dengan cost kecil — 1 kolom, cache pake
+  `Rails.cache` yang mekanismenya udah ada (dipake production.rb).
+- Maintainability: Tinggi, 1 method (`account_active?`), gampang dites.
+- Failure mode: Window staleness maksimal 60 detik — jauh lebih baik dari
+  window 3 hari sekarang, dan `Rails.cache` di test env `:null_store`
+  (selalu fresh) jadi behavior gampang diverifikasi via test.
+- Contextual fit: **Scoped ke role `admin` doang** — role `assessor`
+  diterbitin app sister (`rakamin-api`) buat akun yang gak ada di tabel
+  lokal `users` sama sekali, jadi gak ada yang bisa dicek di sini buat
+  role itu. Ini batasan jujur, bukan corner yang sengaja dilewatin diam-diam
+  — masuk Constraint Signal di gap-analysis.md.
+
+**Option B (ditolak) — query DB tiap request, gak pake cache.**
+- Product impact vs cost: Zero staleness (langsung ke-detect), tapi nambah
+  1 DB hit ke **tiap** request terautentikasi buat kejadian yang jarang
+  banget (deaktivasi akun) — persis lawan dari alasan desain awal
+  ("Does NOT hit the database ... trusts the JWT claims").
+- Maintainability: Sama simpelnya, tapi ngelanggar prinsip desain yang
+  udah ada di kode tanpa alasan kuat (window 60 detik udah cukup buat
+  ancaman ini).
+- Contextual fit: Overkill — trade latency semua request demi presisi yang
+  gak dibutuhin buat threat model ini.
+
+**Option C (ditolak) — Redis blocklist per-`jti` token, dipicu event logout/deactivate.**
+- Lebih presisi (per-token, bukan per-user), tapi butuh nambahin klaim
+  `jti` ke semua token yang diterbitin — sedangkan token bisa juga
+  diterbitin app sister (`rakamin-api`) yang gak tentu nyertain `jti` sama
+  sekali. Gak reliable buat kasus lintas-app ini dibanding cek `active`
+  flag di data yang emang udah dipegang bersama.
+
+**Keputusan: Option A.**

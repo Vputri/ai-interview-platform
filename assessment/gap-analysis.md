@@ -69,10 +69,12 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Lokasi**: `api/app/auth/authorize_api_request.rb:8` — gak ada query DB sama sekali buat verifikasi user; gak ada revocation list; expiry default 3 hari (`api/app/lib/json_web_token.rb:10`).
 - **Dampak**: Admin/assessor yang akun-nya udah dinonaktifin tetep bisa akses penuh sampe token-nya kedaluwarsa 3 hari kemudian.
 
-### P1-6: JWT dev bisa ke-bundle ke JS publik
-- **Service**: web — **Jenis**: missing spec (gak ada guardrail/warning built-in)
-- **Lokasi**: `web/src/stores/authAtom.ts:9-11` fallback ke `VITE_DEV_TOKEN`; `.env.example` root nyaranin isi JWT asli di situ.
-- **Dampak**: Kalau `VITE_DEV_TOKEN` ke-set pas deploy staging/demo (gampang kejadian gak sengaja), token JWT asli ke-bundle plaintext di JS yang bisa diakses siapapun yang buka halamannya.
+### P1-6: JWT dev bisa ke-bundle ke JS publik, dan bikin logout gak beneran logout
+- **Service**: web — **Jenis**: missing spec (gak ada guardrail/warning built-in) + defective implementation (fallback-nya sendiri salah)
+- **Lokasi**: `web/src/stores/authAtom.ts:9` — `getStoredToken()`: `localStorage.getItem(STORAGE_KEY) ?? import.meta.env.VITE_DEV_TOKEN ?? null`; `.env.example` root nyaranin isi JWT asli di situ.
+- **Dampak**: 2 lapis:
+  1. Kalau `VITE_DEV_TOKEN` ke-set pas deploy staging/demo (gampang kejadian gak sengaja), token JWT asli ke-bundle plaintext di JS yang bisa diakses siapapun yang buka halamannya.
+  2. **Dikonfirmasi reproduce**: selama `VITE_DEV_TOKEN` keisi (kondisi normal di dev lokal), klik "Logout" gak beneran ngelogout. `clearToken()` ngapus `localStorage`, tapi `authAtom` cuma di-init sekali pas module load (`atom<AuthState>({ token: getStoredToken() })`) — refresh browser bikin module ke-load ulang, `getStoredToken()` jatuh ke fallback `VITE_DEV_TOKEN` (non-null), `ProtectedRoute` liat token ada → lolos → auto-login balik ke `/assessments`. Assessor yang ngerasa udah logout (misal di komputer bersama) sebenernya masih ke-auth.
 
 ---
 
@@ -116,6 +118,7 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - Hardware check niatnya protect kualitas interview, malah jadi gerbang palsu gara-gara dependency pihak ketiga (P0-5)
 - Error handling di `useAudioCapture`/`useAudioWebSocket` ada tapi salah kanal (masuk ke state "complete" bukan state error) (P0-3, P1-2)
 - Zod/RHF resolver udah terpasang sebagai dependency tapi gak pernah dipakai (P2-6)
+- `getStoredToken()` fallback ke `VITE_DEV_TOKEN` bikin logout gak beneran ngelogout selama env var itu keisi — dikonfirmasi reproduce (P1-6)
 
 ---
 
@@ -126,6 +129,7 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 3. **Urutan verifikasi JWT ambigu**: `TenantResolverMiddleware` decode JWT tanpa verifikasi signature duluan (buat resolve tenant), verifikasi signature beneran baru kejadian belakangan di `AuthorizeApiRequest`. Ini "intentional" per komentar kode, tapi susunan begini gampang disalahpahami developer baru dan gampang jadi celah kalau ada yang refactor tanpa ngerti urutannya.
 4. **Dependency pihak ketiga (httpbin.org, jsdelivr, unpkg) ada di jalur yang nge-block kandidat mulai interview.** Ini bukan cuma bug test-nya, ini keputusan produk yang naruh nasib kandidat di tangan uptime layanan yang gak dikontrol platform ini sama sekali.
 5. **Frontend gak punya lapisan validasi terpusat** (Zod terpasang tapi nganggur) dan **gak ada error-handling terpusat** (tiap halaman re-implement pattern try/catch sendiri-sendiri, kualitasnya beda-beda). Ini bukan sekadar kerapian kode — inkonsistensi ini yang bikin sebagian besar temuan P0/P1/P2 di sisi web (silent catch, crash gak ke-isolate, state error yang gak ada) muncul di tempat yang beda-beda alih-alih satu tempat.
+6. **Revocation buat role `assessor` masih bolong.** Fix P1-5 nutup revocation buat akun `admin` lokal (kolom `active` + cache 60 detik), tapi token `role: assessor` diterbitin app sister `rakamin-api` buat akun yang gak ada di tabel `users` app ini sama sekali — gak ada yang bisa dicek di sisi app ini. Nutup ini beneran butuh salah satu: app sister expose mekanisme revocation-nya sendiri (webhook/shared cache), atau app ini dikasih akses baca ke tabel user asli (`public.users`, mirip pola `Organization`). Keputusan lintas-tim, bukan sesuatu yang bisa diputusin sepihak dari sisi `ai-interview-platform`.
 
 ---
 

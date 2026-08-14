@@ -12,6 +12,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
 | 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
+| Bonus: Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
 
 ---
 
@@ -140,6 +141,59 @@ komentar.
 - `env`-var override (`VITE_SPEED_TEST_PING_URL` dkk) tetep dihormatin
   kalau ada yang mau pakai endpoint lain — cuma defaultnya diganti dari
   kosong (jatuh ke pihak ketiga) jadi backend sendiri.
+
+---
+
+## Bonus (P1): Auth & Session Hardening (P1-4, P1-5, P1-6)
+
+- [x] Migration — 1 baru: `add_column :users, :active, :boolean, default: true, null: false` (P1-5). Reversible, di-test rollback+migrate ulang bersih. P1-4 gak butuh migration (reuse `created_at`).
+- [x] Kode fix:
+  - P1-6: hapus fallback `VITE_DEV_TOKEN` dari `authAtom.ts#getStoredToken()`. Bersihin dokumentasi env var yang udah gak kepake (`web/.env.example`, `web/README.md`).
+  - P1-4: `Session#invite_expired?` (`pending? && created_at < 7.days.ago`), dicek di `candidate_info` + `audio_complete` → `410 Gone` kalau expired.
+  - P1-5: `AuthorizeApiRequest#account_active?` — cek kolom `active` di `users`, di-cache `Rails.cache` 60 detik, **scoped ke role `admin` doang** (role `assessor` dari app sister gak ada di tabel lokal, lihat Constraint Signal #6 di gap-analysis.md).
+- [x] Test — 3 Vitest (`authAtom`: no fallback ke env var, token asli tetep jalan, clear abis logout) + 11 RSpec (4 `Session#invite_expired?`, 4 request spec candidate invite expiry, 3 request spec account revocation termasuk regression check buat role `assessor`).
+- [x] Seeded fault test: 3 branch scratch terpisah (`scratch/seeded-fault-dev-token-bypass`, `scratch/seeded-fault-invite-expiry`, `scratch/seeded-fault-account-revocation`) — tiap satu balikin 1 fix ke kondisi bug, test yang bersangkutan merah, revert via `git revert`, ijo lagi.
+- [x] Screenshot: dari transcript sesi + output test.
+
+### AI Verification Moment
+Rencana awal P1-5: cek `active` user via query DB langsung tiap request
+(paling simpel). Tapi pas mau nulis, ke-inget `AuthorizeApiRequest` punya
+komentar eksplisit "Does NOT hit the database for user lookup — trusts the
+JWT claims" — itu keputusan desain sengaja, bukan kelalaian. Investigasi
+lebih lanjut ke `AuthenticationController`/`User` model nemuin fakta penting:
+tabel `users` di app ini **cuma buat akun admin lokal** — role `assessor`
+via `ASSESSOR_ROLES = %w[admin assessor]` diterbitin app sister
+`rakamin-api` (JWT dipakai bareng, `SECRET_KEY_BASE` sama), dan akun
+`assessor` itu **gak ada row-nya di tabel `users` app ini sama sekali**.
+
+Kalau gue asal query `User.find(user_id)` tanpa nyadar ini, kode bakal
+korban 2 arah: (1) kalau `id` gak ketemu di tabel lokal, query gagal/return
+nil, harus diputusin gimana treat-nya — kalau salah putusan (misal anggap
+"gak ketemu = ditolak"), **semua token `assessor` dari app sister bakal
+ke-block**, regresi besar yang blocking fitur yang emang lagi "planned"; (2)
+kalaupun `nil` di-anggap "boleh lewat" buat aman, itu sama aja gak ngecek
+apa-apa buat kasus assessor. Fix: scope pengecekan `account_active?` cuma
+buat `role == 'admin'`, biarin role lain lewat tanpa disentuh — precise
+fix, bukan defensive-tapi-salah. Ada test spesifik ("does not affect
+assessor-role tokens...") yang mastiin ini.
+
+Verifikasi kedua: nebak `ExceptionHandler::Unauthorized` bakal ngasih HTTP
+401 (nama exception-nya emang "Unauthorized"). Test gagal, actual-nya 403.
+Baca `exception_handler.rb` langsung: exception ini sengaja di-map ke 403
+(dianggap "authenticated tapi gak diizinkan," bukan "gak keautentikasi
+sama sekali") — konsisten sama gimana `check_role!` yang udah ada
+berperilaku. Ganti ekspektasi test, bukan paksa app-nya ngikutin asumsi
+awal yang salah.
+
+### Catatan lain
+- `Rails.cache` di test env pake `:null_store` (liat
+  `config/environments/test.rb:24`) — artinya cache 60-detik P1-5 **gak
+  pernah kejadian pas test**, tiap fetch selalu fresh dari DB. Behavior
+  staleness-nya sengaja gak dites otomatis (susah dites deterministik
+  tanpa mocking waktu/cache backend) — cukup diverifikasi lewat kode +
+  reasoning di revamp-strategy.md.
+- P1-1, P1-2, P1-3 tetep gak digarap — investigasinya belum sedalam 3 ini,
+  didokumentasiin di gap-analysis.md sebagai deferred.
 
 ---
 
