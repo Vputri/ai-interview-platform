@@ -13,6 +13,7 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
 | 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
 | Bonus: Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
+| Bonus 2: Invite Link Wrong Origin (P0-6) | https://github.com/rakamindev/ai-interview-platform/pull/11 |
 
 ---
 
