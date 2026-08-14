@@ -228,6 +228,19 @@ vs dipake buat apa, gak ketauan tanpa nyoba beneran).
 
 ---
 
+## Sub-PR / Enhancement: Global Candidates Pool, Quick Test & UX Modernization
+
+- Dokumen Detail: Lihat [feature-enhancements.md](feature-enhancements.md).
+- [x] **Global Candidates Page (`/candidates`)**: Endpoint `GET /api/v1/sessions` (eager-loaded), 4 kartu KPI statistik, pencarian nama/posisi, filter status tabs (`All`, `Completed`, `Live`, `Awaiting`, `Failed`), dan direct actions.
+- [x] **Quick Invite & Test Candidate Modal**: Modal pembuat sesi wawancara langsung dari halaman candidates dengan `SearchableAssessmentPicker` (live search) + launcher test instan `[ 🚀 Mulai Test Sekarang ↗ ]`.
+- [x] **Smart History Back Navigation (`navigate(-1)`)**: Seluruh tombol Back diubah menggunakan browser history stack agar kembali presisi ke halaman asal.
+- [x] **Portfolio & Transcript UI Modernization**: Desain kartu kegagalan/kosong yang informatif dan direct download (PDF, JSON, TXT) dengan auto-disabled protection.
+- [x] **Reusable Pagination Component**: `PaginationControl.tsx` pada seluruh daftar kandidat (5 data per halaman).
+- [x] **Official Brand Identity**: Mengganti icon generik dengan logo resmi Rakamin di seluruh navbar, login, dan onboarding.
+- [x] **Tests & Build Verified**: 25/25 Vitest ijo, 64/64 RSpec ijo, production build `tsc && vite build` bersih.
+
+---
+
 ## Test Coverage — Ringkasan Akhir
 
 <!-- diisi pas semua sub-PR kelar: command yang dijalanin, hasil, coverage kalau ada -->

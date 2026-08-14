@@ -34,6 +34,8 @@ export interface AssessmentSkill {
 export interface Session {
   id: number;
   assessment_id: number;
+  assessment_name?: string;
+  role_title?: string;
   tenant_id?: number;
   candidate_id?: number;
   candidate_name?: string;
@@ -168,6 +170,7 @@ export interface CandidateInfo {
   role_title: string;
   time_limit_min: number;
   session_status: string;
+  candidate_name?: string;
 }
 
 export interface PaginationMeta {

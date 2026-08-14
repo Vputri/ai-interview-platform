@@ -85,6 +85,8 @@ export default function LoginPage() {
     setError(null);
   };
 
+  const isFormValid = email.trim().length > 0 && password.length > 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
       {/* ── Decorative background blobs ── */}
@@ -107,17 +109,19 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md mx-4 shadow-2xl border border-border/60 bg-card/95 backdrop-blur-sm">
         <CardHeader className="pb-2 pt-8 px-8 text-center">
           {/* Brand icon */}
-          <div
-            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg"
-            style={{
-              background: "linear-gradient(135deg, hsl(184 99% 31%), hsl(184 99% 42%))",
-            }}
-          >
-            <Mic className="h-7 w-7 text-white" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white border border-slate-200/90 shadow-md p-2 overflow-hidden">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZMs7hB5lSlMie7MpqlulgL59oYf7CwmvIE6wBr3pzdkKnZEyacEf8t5w&s=10"
+              alt="Rakamin Logo"
+              className="h-full w-full object-contain rounded-xl"
+            />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">AI Interview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            AI-Powered Candidate Assessment Platform
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <span className="text-2xl font-bold tracking-tight text-foreground">Rakamin</span>
+            <span className="text-2xl font-bold tracking-tight text-primary">AI Interview</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Platform Penilaian &amp; Wawancara Kerja Berbasis AI
           </p>
         </CardHeader>
 
@@ -208,7 +212,7 @@ export default function LoginPage() {
               id="login-submit"
               type="submit"
               className="w-full h-10 font-semibold transition-all duration-200"
-              disabled={loading}
+              disabled={!isFormValid || loading}
             >
               {loading ? (
                 <>
