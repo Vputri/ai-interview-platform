@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControl } from "@/components/ui/pagination-control";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { sessionsApi } from "@/services/sessions";
 import { assessmentsApi } from "@/services/assessments";
 import {
@@ -592,20 +593,20 @@ export default function CandidateListPage() {
           </div>
 
           {/* Assessment Filter Dropdown */}
-          <div className="w-full md:w-64">
-            <select
-              value={assessmentFilter}
-              onChange={(e) => setAssessmentFilter(e.target.value)}
-              className="w-full h-9 sm:h-10 px-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-            >
-              <option value="all">Semua Posisi Lowongan</option>
-              {assessments.map((a) => (
-                <option key={a.id} value={String(a.id)}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            options={assessments.map((a) => ({
+              value: String(a.id),
+              label: a.name,
+              description: `${a.time_limit_min} mins • ${a.skills?.length || 0} skills`,
+            }))}
+            value={assessmentFilter}
+            onChange={setAssessmentFilter}
+            placeholder="Semua Posisi Lowongan"
+            allLabel="Semua Posisi Lowongan"
+            className="w-full md:w-64"
+            icon={<Briefcase className="h-3.5 w-3.5 text-primary shrink-0" />}
+            hideAllOption={false}
+          />
         </div>
 
         {/* Status Filter Tabs */}

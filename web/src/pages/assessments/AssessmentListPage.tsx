@@ -122,11 +122,18 @@ function AssessmentCardItem({
                 <CardTitle className="text-base font-bold text-slate-900 truncate group-hover:text-primary transition-colors">
                   {assessment.name}
                 </CardTitle>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                  <Clock className="h-3 w-3" />
-                  <span>{assessment.time_limit_min} mins</span>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-slate-400" />
+                    {assessment.time_limit_min} mins
+                  </span>
                   <span>·</span>
                   <span>{skillsList.length} skills</span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1 font-semibold text-slate-700 bg-slate-100/80 px-1.5 py-0.5 rounded-md">
+                    <Users className="h-3 w-3 text-primary" />
+                    {assessment.candidates_count ?? 0} kandidat
+                  </span>
                 </div>
               </div>
             </div>
@@ -140,10 +147,10 @@ function AssessmentCardItem({
         <CardContent className="px-4 sm:px-5 py-3 space-y-3">
           <div>
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Assessed Competencies
+              Kompetensi yang Diuji
             </span>
             {displaySkills.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No skills configured.</p>
+              <p className="text-xs text-muted-foreground italic">Belum ada skill yang dikonfigurasi.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {displaySkills.map((s, idx) => (
@@ -162,7 +169,7 @@ function AssessmentCardItem({
                 ))}
                 {remainingCount > 0 && (
                   <Badge variant="outline" className="text-[10px] text-slate-500 py-0.5 px-1.5 font-semibold">
-                    +{remainingCount} more
+                    +{remainingCount} lainnya
                   </Badge>
                 )}
               </div>
@@ -184,7 +191,7 @@ function AssessmentCardItem({
           }}
         >
           <Trash2 className="h-3.5 w-3.5 mr-1" />
-          <span>Delete</span>
+          <span>Hapus</span>
         </Button>
 
         <Button
@@ -198,7 +205,7 @@ function AssessmentCardItem({
           }}
         >
           <Users className="h-3.5 w-3.5 mr-1" />
-          <span>Candidates &amp; Detail</span>
+          <span>Kandidat &amp; Detail</span>
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </CardFooter>

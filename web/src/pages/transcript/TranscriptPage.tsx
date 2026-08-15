@@ -7,20 +7,23 @@ import { sessionsApi } from "@/services/sessions";
 import {
   ArrowLeft,
   Download,
-  Bot,
+  Printer,
+  FileDown,
   User,
+  Bot,
   MessagesSquare,
   Sparkles,
   FileText,
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TranscriptTurn } from "@/types";
+import type { TranscriptTurn, Session } from "@/types";
 
 export default function TranscriptPage() {
   const { id, sessionId } = useParams<{ id: string; sessionId: string }>();
   const navigate = useNavigate();
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
   const [candidateName, setCandidateName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -32,16 +35,17 @@ export default function TranscriptPage() {
     ])
       .then(([tRes, sRes]) => {
         setTurns(tRes.data.turns);
+        setSession(sRes.data.session);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [sessionId]);
 
-  const handleDownload = () => {
+  const handleDownloadTxt = () => {
     if (turns.length === 0) return;
     const lines = turns.map((t) => {
-      const label = t.speaker === "ai" ? "AI Interviewer" : (candidateName || "Candidate");
+      const label = t.speaker === "ai" ? "Rakamin AI Interviewer" : (candidateName || "Candidate");
       return `[${label}]\n${t.text}`;
     });
     const blob = new Blob([lines.join("\n\n")], { type: "text/plain;charset=utf-8" });
@@ -53,6 +57,183 @@ export default function TranscriptPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = () => {
+    if (turns.length === 0) return;
+
+    const candidate = candidateName || "Kandidat";
+    const role = session?.assessment_name || session?.role_title || "Posisi Wawancara";
+    const dateFormatted = new Date(session?.created_at || Date.now()).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const turnsHtml = turns
+      .map((t) => {
+        const isAI = t.speaker === "ai";
+        return `
+          <div style="margin-bottom: 16px; display: flex; flex-direction: column; align-items: ${isAI ? "flex-start" : "flex-end"};">
+            <div style="font-size: 11px; font-weight: 700; color: ${isAI ? "#0d9488" : "#475569"}; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">
+              ${isAI ? "🤖 Rakamin AI Interviewer" : `👤 ${candidate}`}
+            </div>
+            <div style="max-width: 85%; padding: 12px 16px; border-radius: 14px; font-size: 13px; line-height: 1.6; background-color: ${
+              isAI ? "#f8fafc" : "#0f172a"
+            }; color: ${isAI ? "#1e293b" : "#ffffff"}; border: 1px solid ${
+          isAI ? "#e2e8f0" : "#0f172a"
+        }; box-shadow: 0 1px 2px rgba(0,0,0,0.05); white-space: pre-wrap;">
+              ${t.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const docHtml = `
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <title>Transkrip Wawancara - ${candidate} (Sesi #${sessionId})</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 18mm 15mm;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 24px;
+            background: #fff;
+          }
+          .header {
+            border-bottom: 2px solid #0d9488;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .brand {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          .brand span {
+            color: #0d9488;
+          }
+          .meta-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+            font-size: 12px;
+          }
+          .meta-item {
+            display: flex;
+            flex-direction: column;
+          }
+          .meta-label {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .meta-value {
+            color: #0f172a;
+            font-weight: 700;
+            margin-top: 2px;
+          }
+          .transcript-container {
+            margin-top: 10px;
+          }
+          .footer {
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="brand">Rakamin <span>AI Interview</span></div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 500;">Official Audio Interview Transcript</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #64748b;">
+            <div>Session ID: #${sessionId}</div>
+            <div>Generated: ${new Date().toLocaleDateString("id-ID")}</div>
+          </div>
+        </div>
+
+        <div class="meta-box">
+          <div class="meta-item">
+            <span class="meta-label">Nama Kandidat</span>
+            <span class="meta-value">${candidate}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Posisi Lowongan</span>
+            <span class="meta-value">${role}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Waktu Sesi Wawancara</span>
+            <span class="meta-value">${dateFormatted}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Total Percakapan</span>
+            <span class="meta-value">${turns.length} Dialog Turns (Live Audio 16kHz)</span>
+          </div>
+        </div>
+
+        <div class="transcript-container">
+          ${turnsHtml}
+        </div>
+
+        <div class="footer">
+          Dokumen ini merupakan rekaman transkrip otomatis resmi dari sesi wawancara suara platform Rakamin AI Interview.
+        </div>
+      </body>
+      </html>
+    `;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(docHtml);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 2000);
+    }, 300);
   };
 
   return (
@@ -85,17 +266,31 @@ export default function TranscriptPage() {
           </div>
         </div>
 
-        {/* Download .txt button */}
+        {/* Action Buttons: Download PDF & TXT */}
         {!loading && !error && turns.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            className="h-9 px-3 text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs shrink-0"
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
-            <span>Unduh Transkrip (.txt)</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              className="h-9 px-3 text-xs font-semibold border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer flex items-center gap-1.5"
+              title="Unduh / Cetak Transkrip sebagai PDF Resmi"
+            >
+              <FileDown className="h-3.5 w-3.5 text-primary" />
+              <span>Unduh PDF</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTxt}
+              className="h-9 px-3 text-xs font-semibold border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer flex items-center gap-1.5"
+              title="Unduh Transkrip Teks Mentah"
+            >
+              <Download className="h-3.5 w-3.5 text-slate-500" />
+              <span>Unduh .txt</span>
+            </Button>
+          </div>
         )}
       </div>
 

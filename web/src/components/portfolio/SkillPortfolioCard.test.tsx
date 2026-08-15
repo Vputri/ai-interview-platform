@@ -24,7 +24,7 @@ describe("SkillPortfolioCard", () => {
 
     expect(screen.getByText("L3")).toBeInTheDocument();
     expect(screen.getByText("Confidence: HIGH")).toBeInTheDocument();
-    expect(screen.getByText("Override rating ▼")).toBeInTheDocument();
+    expect(screen.getByText(/Override Rating/i)).toBeInTheDocument();
   });
 
   // Regression: assessment/gap-analysis.md P0-4 — a configured skill the AI

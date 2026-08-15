@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import CustomSkillModal from "@/components/assessment/CustomSkillModal";
-import { ArrowLeft, Plus, Loader2, Clock, Sparkles, Layers, BookOpen, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Clock, Globe, Sparkles, Layers, BookOpen, AlertCircle } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { TIME_LIMIT_OPTIONS, LEVEL_LABELS } from "@/utils/constants";
 import type { AssessmentSkill } from "@/types";
@@ -135,6 +135,7 @@ export default function AssessmentEditPage() {
 
   const name = watch("name");
   const timeLimit = watch("time_limit_min");
+  const language = watch("language");
   const skills = watch("skills") || [];
 
   const isFormValid =
@@ -201,7 +202,7 @@ export default function AssessmentEditPage() {
                 1. General Information
               </CardTitle>
               <CardDescription className="text-xs">
-                Role title and session duration
+                Basic details and settings for the AI Interviewer
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
@@ -211,6 +212,7 @@ export default function AssessmentEditPage() {
                 </Label>
                 <Input
                   id="name"
+                  placeholder="e.g. Senior Frontend Engineer"
                   className="h-10 text-sm"
                   {...register("name", { required: "Role title is required" })}
                 />
@@ -219,26 +221,47 @@ export default function AssessmentEditPage() {
                 )}
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <Label className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-slate-500" />
-                  Session Time Limit <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={String(watch("time_limit_min"))}
-                  onValueChange={(v) => setValue("time_limit_min", Number(v))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-slate-500" />
+                    Session Time Limit <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={String(watch("time_limit_min"))}
+                    onValueChange={(v) => setValue("time_limit_min", Number(v))}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_LIMIT_OPTIONS.map((min) => (
+                        <SelectItem key={min} value={String(min)}>
+                          {min} minutes
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5 text-slate-500" />
+                    Interview Language
+                  </Label>
+                  <Select
+                  value={language || "id"}
+                  onValueChange={(v) => setValue("language", v as "id" | "en")}
                 >
-                  <SelectTrigger className="h-10 sm:w-64">
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIME_LIMIT_OPTIONS.map((min) => (
-                      <SelectItem key={min} value={String(min)}>
-                        {min} minutes
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
+                    <SelectItem value="en">🇬🇧 English</SelectItem>
                   </SelectContent>
                 </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -340,9 +363,17 @@ export default function AssessmentEditPage() {
                 </p>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 text-xs">
-                <span className="text-muted-foreground block">Duration</span>
-                <span className="font-semibold text-slate-800">{timeLimit} mins</span>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
+                <div>
+                  <span className="text-muted-foreground block">Duration</span>
+                  <span className="font-semibold text-slate-800">{timeLimit} mins</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Language</span>
+                  <span className="font-semibold text-slate-800">
+                    {language === "en" ? "🇬🇧 English" : "🇮🇩 Bahasa Indonesia"}
+                  </span>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-slate-100">

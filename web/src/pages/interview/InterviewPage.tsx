@@ -70,6 +70,11 @@ export default function InterviewPage() {
   const connectionLostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [micMuted, setMicMuted] = useState(false);
   const micMutedRef = useRef(false);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcript]);
 
   // Fetch candidate info
   useEffect(() => {
@@ -213,8 +218,16 @@ export default function InterviewPage() {
     stopPlayback();
     sendJson({ type: "end_session" });
     disconnect();
-    setInterviewState("complete");
-  }, [stopCapture, stopPlayback, sendJson, disconnect]);
+    // Guard: if the AI never spoke and no answer was recorded, the Gemini backend
+    // connection failed silently. Show a real error instead of a fake success screen
+    // (fixes P0-3 in assessment/gap-analysis.md — "silent failure as Interview Complete").
+    if (transcript.length === 0) {
+      setErrorReason("connection_lost");
+      setInterviewState("error");
+    } else {
+      setInterviewState("complete");
+    }
+  }, [stopCapture, stopPlayback, sendJson, disconnect, transcript.length]);
 
   const wsConnectionStatus =
     interviewState === "reconnecting"
@@ -444,6 +457,7 @@ export default function InterviewPage() {
           {candidateInfo && (
             <InterviewTimer
               totalSeconds={candidateInfo.time_limit_min * 60}
+              elapsedOnMount={candidateInfo.elapsed_seconds ?? 0}
               running={interviewState === "active"}
               onExpired={endInterview}
             />
@@ -506,10 +520,11 @@ export default function InterviewPage() {
 
               {/* Transcript */}
               {transcript.length > 0 && (
-                <div className="w-full space-y-2 overflow-y-auto max-h-[45vh] p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="w-full space-y-2.5 overflow-y-auto max-h-[45vh] p-3.5 bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-200/90 shadow-2xs">
                   {transcript.map((turn, i) => (
                     <TranscriptBubble key={i} speaker={turn.speaker} text={turn.text} />
                   ))}
+                  <div ref={transcriptEndRef} />
                 </div>
               )}
             </>

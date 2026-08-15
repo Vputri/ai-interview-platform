@@ -35,6 +35,10 @@ export default function VacancyNewPage() {
 
   const onSubmit = async (data: VacancyFormValues) => {
     setError(null);
+    if (!data.skills || data.skills.length === 0) {
+      setError("Mohon tambahkan minimal 1 target skill agar lowongan memiliki standar benchmark.");
+      return;
+    }
     setSubmitting(true);
     try {
       await vacanciesApi.create({
@@ -53,7 +57,7 @@ export default function VacancyNewPage() {
 
   const roleTitle = watch("role_title");
   const skills = watch("skills") || [];
-  const isFormValid = Boolean(roleTitle?.trim());
+  const isFormValid = Boolean(roleTitle?.trim() && skills.length > 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-28 sm:pb-8">

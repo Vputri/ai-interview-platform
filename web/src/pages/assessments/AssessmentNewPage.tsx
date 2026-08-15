@@ -32,7 +32,7 @@ import type { AssessmentSkill } from "@/types";
 export interface AssessmentFormValues {
   name: string;
   time_limit_min: number;
-  language: "en" | "id";
+  language: "id" | "en";
   skills: Partial<AssessmentSkill>[];
 }
 
@@ -48,7 +48,7 @@ export default function AssessmentNewPage() {
     defaultValues: {
       name: "",
       time_limit_min: 45,
-      language: "en",
+      language: "id",
       skills: [],
     },
   });
@@ -239,15 +239,16 @@ export default function AssessmentNewPage() {
                     Interview Language
                   </Label>
                   <Select
-                    defaultValue="en"
-                    onValueChange={(v) => setValue("language", v as "en" | "id")}
+                    defaultValue="id"
+                    value={language || "id"}
+                    onValueChange={(v) => setValue("language", v as "id" | "en")}
                   >
                     <SelectTrigger className="h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="en">English (Default)</SelectItem>
-                      <SelectItem value="id">Indonesian (Bahasa)</SelectItem>
+                      <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
+                      <SelectItem value="en">🇬🇧 English</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -359,7 +360,9 @@ export default function AssessmentNewPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Language</span>
-                  <span className="font-semibold text-slate-800">{language === "id" ? "Indonesian" : "English"}</span>
+                  <span className="font-semibold text-slate-800">
+                    {language === "en" ? "🇬🇧 English" : "🇮🇩 Bahasa Indonesia"}
+                  </span>
                 </div>
               </div>
 
