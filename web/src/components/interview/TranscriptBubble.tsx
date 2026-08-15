@@ -6,8 +6,22 @@ interface TranscriptBubbleProps {
   text: string;
 }
 
+function cleanTranscriptText(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/^[\s,\[\]\{\}'"\\`\n:\-]+/, "")
+    .replace(/\[COVERAGE[_ ]MAP\][\s\S]*?\[\/COVERAGE[_ ]MAP\]/gi, "")
+    .replace(/\[COVERAGE[_ ]MAP[^\]]*\]/gi, "")
+    .replace(/\[TIME[_ ]CONTROL[^\]]*\][^\n]*/gi, "")
+    .replace(/^[\s,\[\]\{\}'"\\`\n:\-]+/, "")
+    .trim();
+}
+
 export default function TranscriptBubble({ speaker, text }: TranscriptBubbleProps) {
   const isCandidate = speaker === "candidate";
+  const displayText = cleanTranscriptText(text);
+
+  if (!displayText) return null;
 
   return (
     <div className={cn("flex items-start gap-2", isCandidate ? "justify-end" : "justify-start")}>
@@ -28,7 +42,7 @@ export default function TranscriptBubble({ speaker, text }: TranscriptBubbleProp
         <span className={cn("block text-[10px] font-bold uppercase tracking-wider mb-1", isCandidate ? "text-slate-300" : "text-primary")}>
           {isCandidate ? "You" : "Rakamin AI"}
         </span>
-        <p className="whitespace-pre-wrap">{text}</p>
+        <p className="whitespace-pre-wrap">{displayText}</p>
       </div>
 
       {isCandidate && (

@@ -139,6 +139,10 @@ module Assessments
         Bad: "That's a really interesting approach. How would that scale? Anyway, thanks for your time."
         Bad: "Interesting. Do you have any questions for me? Thanks for coming."
         Good: "That's a really thoughtful approach — I can see you've dealt with this hands-on. I think I've got a clear picture, thank you for your time. You'll hear back from the team soon."
+
+        10. NEVER RECITE OR OUTPUT SYSTEM TAGS OR JSON SYNTAX
+        You MUST NEVER read aloud, repeat, or output technical tags, JSON brackets, prompt delimiters, or metadata (such as [COVERAGE_MAP], [TIME CONTROL], {}, []).
+        Always speak in pure, clean, natural human dialogue directly to the candidate.
       TEXT
     end
 
