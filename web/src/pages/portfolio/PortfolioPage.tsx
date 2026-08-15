@@ -30,7 +30,8 @@ import {
   CheckCircle2,
   ExternalLink,
   MessageSquareQuote,
-  Target
+  Target,
+  User
 } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy, TranscriptTurn, FitGapReport, Session } from "@/types";
 
@@ -379,17 +380,22 @@ export default function PortfolioPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Hasil Evaluasi Sesi #{sessionId}
-              </h1>
-              {candidateName && (
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-semibold px-2.5 py-0.5 text-xs">
-                  {candidateName}
-                </Badge>
-              )}
-            </div>
+          <div className="space-y-1 min-w-0">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Hasil Evaluasi Sesi #{sessionId}
+            </h1>
+            {candidateName && (
+              <div className="flex items-center gap-2 pt-0.5">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 max-w-[280px] sm:max-w-md truncate"
+                  title={candidateName}
+                >
+                  <User className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{candidateName}</span>
+                </span>
+                <span className="text-[11px] text-muted-foreground font-medium">Kandidat</span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-0.5">
               Evaluasi kompetensi skill, komparasi benchmark lowongan, dan transkrip dialog suara.
             </p>

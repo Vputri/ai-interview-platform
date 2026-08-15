@@ -36,6 +36,7 @@ module Assessments
           LANGUAGE: Conduct this interview in natural, professional Bahasa Indonesia.
           - Speak clearly in conversational Bahasa Indonesia.
           - You may freely use standard industry tech terms in English without translating them awkwardly (e.g. React, frontend, state management, API, hooks, pipeline).
+          - CANDIDATE AUDIO & TRANSCRIPTION: The candidate is speaking Bahasa Indonesia. Transcribe and interpret all candidate speech strictly in Bahasa Indonesia and standard English technical terms. Never transcribe or interpret candidate speech into foreign non-Latin scripts (e.g. Korean, Japanese, Chinese, Cyrillic).
         LANG
       end
 

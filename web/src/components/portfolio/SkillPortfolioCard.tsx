@@ -16,15 +16,15 @@ interface SkillPortfolioCardProps {
 const UNASSESSED_COPY = {
   not_assessed: {
     icon: MinusCircle,
-    label: "Not assessed",
-    detail: "This skill was configured for the assessment but wasn't covered during the interview.",
+    label: "Belum Diuji",
+    detail: "Skill ini dikonfigurasi pada asesmen namun belum sempat diuji selama sesi wawancara.",
     classes: "border-dashed text-muted-foreground",
     iconClasses: "text-muted-foreground",
   },
   unparseable: {
     icon: AlertTriangle,
-    label: "Needs manual review",
-    detail: "The assessment model's response for this skill couldn't be scored automatically.",
+    label: "Perlu Peninjauan Manual",
+    detail: "Hasil respon untuk skill ini belum dapat diskor otomatis dan membutuhkan peninjauan manual.",
     classes: "border-amber-300",
     iconClasses: "text-amber-600",
   },

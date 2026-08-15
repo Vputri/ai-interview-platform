@@ -41,7 +41,7 @@ describe("SkillPortfolioCard", () => {
 
     render(<SkillPortfolioCard skill={skill} onOverrideSaved={vi.fn()} />);
 
-    expect(screen.getByText("Not assessed")).toBeInTheDocument();
+    expect(screen.getByText("Belum Diuji")).toBeInTheDocument();
     expect(screen.queryByText(/^L[1-5]$/)).not.toBeInTheDocument();
     expect(screen.queryByText("Override rating ▼")).not.toBeInTheDocument();
   });
@@ -56,8 +56,8 @@ describe("SkillPortfolioCard", () => {
 
     render(<SkillPortfolioCard skill={skill} onOverrideSaved={vi.fn()} />);
 
-    expect(screen.getByText("Needs manual review")).toBeInTheDocument();
-    expect(screen.queryByText("Not assessed")).not.toBeInTheDocument();
+    expect(screen.getByText("Perlu Peninjauan Manual")).toBeInTheDocument();
+    expect(screen.queryByText("Belum Diuji")).not.toBeInTheDocument();
     expect(screen.queryByText(/^L[1-5]$/)).not.toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe("SkillPortfolioCard", () => {
     expect(() =>
       render(<SkillPortfolioCard skill={skill} onOverrideSaved={vi.fn()} />)
     ).not.toThrow();
-    expect(screen.getByText("Needs manual review")).toBeInTheDocument();
+    expect(screen.getByText("Perlu Peninjauan Manual")).toBeInTheDocument();
   });
 
   it("shows the discovered badge for a discovered skill regardless of status", () => {

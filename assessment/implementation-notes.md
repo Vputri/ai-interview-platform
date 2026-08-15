@@ -247,7 +247,7 @@ vs dipake buat apa, gak ketauan tanpa nyoba beneran).
 
 ## Sub-PR / Enhancement: AI Multimodal Voice, Unified Evaluation Hub & Indonesian Localization
 
-- [x] **Gemini Multimodal Migration**: Migrasi live audio WebSocket dari `gemini-2.0-flash-exp` (deprecated) ke endpoint resmi `gemini-3.1-flash-live-preview`, dan evaluasi HTTP generator ke `gemini-3.5-flash` (`v1beta`).
+- [x] **Gemini Multimodal Migration**: Migrasi live audio WebSocket dari `gemini-2.0-flash-exp` (deprecated) ke endpoint resmi `gemini-3.1-flash-live-preview`, dan evaluasi HTTP generator ke `gemini-3.5-flash` (`v1beta`) dilengkapi 429 exponential backoff retry dan multi-model fallback (`gemini-2.5-flash`/`gemini-1.5-flash`).
 - [x] **FitGap Zero-Skill Safety**: Model `FitGapReport` menambahkan `allow_blank: true` untuk perbandingan skill kosong, mencegah silent worker crash dan infinite polling.
 - [x] **Unified Session Hub (3 Tabs)**: Menyatukan Evaluasi Skill, Kecocokan Lowongan, dan Transkrip ke dalam satu halaman terpadu di `PortfolioPage.tsx` dengan auto-load FitGap report dan Quick Switch Badges.
 - [x] **Live Searchable Select (Combobox)**: Komponen `SearchableSelect.tsx` dengan auto-focus pencarian, deskripsi durasi/skill, dan clear button.

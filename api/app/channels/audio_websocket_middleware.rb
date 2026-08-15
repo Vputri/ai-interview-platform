@@ -125,12 +125,8 @@ class AudioWebSocketMiddleware
   end
 
   def ensure_system_prompt(session)
-    return if session.assessment.system_prompt.present?
-
-    Rails.logger.warn("[AudioWS] system_prompt missing for assessment #{session.assessment.id} — regenerating")
-    Assessments::SystemPromptCompiler.new(session.assessment).call.tap do |prompt|
-      session.assessment.update_column(:system_prompt, prompt)
-    end
+    prompt = Assessments::SystemPromptCompiler.new(session.assessment).call
+    session.assessment.update_column(:system_prompt, prompt)
   end
 
   def build_gemini_client(browser_ws, state)

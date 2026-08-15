@@ -46,11 +46,10 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Dampak**: Di environment manapun frontend & backend beda origin (yang emang normal buat arsitektur two-service ini), tombol "Copy link" yang dipake assessor buat ngundang kandidat ngehasilin URL yang nunjuk ke server API, bukan ke halaman interview. Kandidat yang buka link itu cuma dapet Rails routing error. Ini nutup **happy path paling dasar** — kandidat gak bisa mulai interview sama sekali lewat jalur utama, ditemuin pas manual testing "Copy link" beneran di browser.
 - **Status**: [x] **RESOLVED** (di-route ke `FRONTEND_BASE_URL` port 5173).
 
-### P0-7: Model Gemini Live Multimodal & HTTP Evaluasi Pensiun/Gagal Koneksi
-- **Service**: api & web — **Jenis**: defective implementation / model deprecation
-- **Lokasi**: `api/app/clients/gemini/live_client.rb` & `api/app/clients/gemini/http_client.rb` — Hardcoded string model `gemini-2.0-flash-exp` pensiun di server Google sehingga live voice interview WebSocket gagal handshake (404/400).
-- **Dampak**: Kandidat yang mulai wawancara suara live tidak dapat terhubung ke AI sama sekali (WebSocket connection aborted), dan proses generate evaluasi portfolio gagal di background.
-- **Status**: [x] **RESOLVED** (dimigrasikan ke endpoint produksi resmi `gemini-3.1-flash-live-preview` untuk live audio WebSocket dan `gemini-3.5-flash` pada `https://generativelanguage.googleapis.com/v1beta` untuk evaluasi HTTP).
+- **Service**: api & web — **Jenis**: defective implementation / model deprecation & rate limiting
+- **Lokasi**: `api/app/clients/gemini/live_client.rb` & `api/app/clients/gemini/http_client.rb` — Hardcoded string model `gemini-2.0-flash-exp` pensiun di server Google sehingga live voice interview WebSocket gagal handshake (404/400). Selain itu, panggilan HTTP tanpa exponential backoff retry mudah terbentur 429 Rate Limit.
+- **Dampak**: Kandidat yang mulai wawancara suara live tidak dapat terhubung ke AI sama sekali (WebSocket connection aborted), dan proses generate evaluasi portfolio gagal di background jika terkena rate limit kuota API.
+- **Status**: [x] **RESOLVED** (dimigrasikan ke endpoint produksi resmi `gemini-3.1-flash-live-preview` untuk live audio WebSocket dan `gemini-3.5-flash` pada `https://generativelanguage.googleapis.com/v1beta` untuk evaluasi HTTP, dilengkapi arsitektur 429 exponential backoff retry dan multi-model fallback `gemini-2.5-flash`/`gemini-1.5-flash`).
 
 ### P0-8: Fit/Gap Engine Infinite Loading & Silent Failure pada Lowongan Tanpa Skill
 - **Service**: api — **Jenis**: defective implementation / missing validation
