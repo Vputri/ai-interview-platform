@@ -53,10 +53,17 @@ module Portfolios
 
       transcript_text = turns.map { |t| "[#{t.speaker.upcase}]: #{t.text}" }.join("\n")
 
+      lang_instruction = if assessment.language == 'en'
+        "LANGUAGE: Write all 'competency_summary' text in English."
+      else
+        "LANGUAGE: Write all 'competency_summary' text in professional, natural Bahasa Indonesia for Indonesian HR assessors."
+      end
+
       <<~PROMPT
         You are evaluating a completed skills assessment interview to produce a structured skill portfolio.
 
         ROLE BEING ASSESSED: #{assessment.name}
+        #{lang_instruction}
 
         SKILL DEFINITIONS AND BEHAVIORAL ANCHORS:
         #{skills_text}
@@ -93,6 +100,7 @@ module Portfolios
         3. WRITE THE COMPETENCY SUMMARY
            2-3 sentences. Focus on patterns, not individual answers.
            What does this person reliably do at this skill? What's the ceiling? What's missing?
+           Remember to follow the LANGUAGE requirement above.
 
         4. ASSIGN CONFIDENCE
            high — probe_count >= 3 AND state = covered

@@ -272,14 +272,20 @@ class AudioWebSocketMiddleware
   def sanitize_output_transcription(text)
     text = text.gsub(/\[COVERAGE[_ ]MAP\][\s\S]*?\[\/COVERAGE[_ ]MAP\]/m, '').strip
     text = text.gsub(/\[COVERAGE[_ ]MAP[^\]]*\]/m, '').strip
-    text = text.sub(/\A\s*\{.*?"discovered"\s*:\s*\[.*?\].*?\}\s*/m, '').strip
-    # Skip up to the last }] (or }) immediately followed by an uppercase letter — covers partial JSON echoes.
-    text = text.sub(/\A[\s\S]*?[\}\]]+[\s\}\]]*(?=\p{Lu})/m, '').strip
     text = text.gsub(/\[TIME[_ ]CONTROL[^\]]*\][^\n]*/m, '').strip
-    text = text.gsub(/pacing=\S+\s*priority_next=\S*/m, '').strip
+    text = text.gsub(/\[SISTEM\][^\n]*/m, '').strip
     text = text.gsub(/\[Start the interview[^\]]*\]/m, '').strip
     text = text.gsub(/\[SESSION RESUME\][^\n]*/m, '').strip
-    text.gsub(/\[SISTEM\][^\n]*/m, '').strip
+
+    # Strip full or partial JSON objects containing coverage/pacing keys
+    text = text.gsub(/\{[^{}]*"(?:discovered|pacing|time_remaining_minutes|skills|probe_count)"[^{}]*\}/m, '').strip
+    # Strip any dangling JSON remnants at the start (e.g. , "discovered": [] ... } ] —)
+    text = text.sub(/\A[\s,\[\]\{\}'"\w\d\n:\-]+(?:discovered|pacing|time_remaining_minutes)[^—\n]*[\}\]]*[\s—\-:]*/m, '').strip
+    # Strip leading punctuation/dashes left over from prompt delimiters
+    text = text.sub(/\A[\s—\-:]+/, '').strip
+
+    text = text.gsub(/pacing=\S+\s*priority_next=\S*/m, '').strip
+    text
   end
 
   # Fires after the model's turnComplete — safe to tell the frontend to unmute the mic.

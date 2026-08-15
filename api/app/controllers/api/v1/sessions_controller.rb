@@ -159,7 +159,9 @@ module Api
           role_title:      assessment.name,
           time_limit_min:  assessment.time_limit_min,
           session_status:  session.status,
-          candidate_name:  session.candidate_name
+          candidate_name:  session.candidate_name,
+          started_at:      session.started_at&.iso8601,
+          elapsed_seconds: session.started_at ? (Time.current - session.started_at).to_i : nil
         )
       end
 
