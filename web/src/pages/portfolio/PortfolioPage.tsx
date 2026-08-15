@@ -404,10 +404,16 @@ export default function PortfolioPage() {
             onClick={handleRegeneratePortfolio}
             disabled={generating}
             className="h-9 px-3 text-xs font-semibold border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs"
-            title="Evaluasi ulang transkrip sesi ini dengan model AI"
+            title={isComplete ? "Evaluasi ulang transkrip sesi ini dengan model AI" : "Generate evaluasi transkrip sesi ini dengan model AI"}
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 text-primary ${generating ? "animate-spin" : ""}`} />
-            <span>{generating ? "Mengevaluasi..." : "Evaluasi Ulang AI"}</span>
+            <span>
+              {generating
+                ? "Mengevaluasi..."
+                : isComplete
+                ? "Evaluasi Ulang AI"
+                : "Generate Evaluasi AI"}
+            </span>
           </Button>
 
           <Button
@@ -468,7 +474,7 @@ export default function PortfolioPage() {
           
           <div className="space-y-1.5 max-w-md mx-auto">
             <h2 className="text-lg font-bold text-slate-900">
-              Laporan Portofolio Belum Tersedia
+              Laporan Evaluasi Belum Tersedia
             </h2>
             <p className="text-xs text-slate-600 leading-relaxed">
               Sesi wawancara ini tidak memiliki rekaman transkrip audio yang cukup (sesi terputus lebih awal atau belum ada respon jawaban yang terekam), sehingga AI belum dapat menghasilkan penilaian kompetensi.
@@ -486,7 +492,7 @@ export default function PortfolioPage() {
               className="rounded-xl border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 font-semibold text-xs h-9 px-4"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-amber-700" />
-              <span>Coba Generate Ulang</span>
+              <span>Coba Generate Evaluasi</span>
             </Button>
 
             <Button
