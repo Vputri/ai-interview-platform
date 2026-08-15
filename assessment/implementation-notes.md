@@ -241,10 +241,37 @@ vs dipake buat apa, gak ketauan tanpa nyoba beneran).
 
 ---
 
+## Sub-PR / Enhancement: AI Multimodal Voice, Unified Evaluation Hub & Indonesian Localization
+
+- [x] **Gemini Multimodal Migration**: Migrasi live audio WebSocket dari `gemini-2.0-flash-exp` (deprecated) ke endpoint resmi `gemini-3.1-flash-live-preview`, dan evaluasi HTTP generator ke `gemini-3.5-flash` (`v1beta`).
+- [x] **FitGap Zero-Skill Safety**: Model `FitGapReport` menambahkan `allow_blank: true` untuk perbandingan skill kosong, mencegah silent worker crash dan infinite polling.
+- [x] **Unified Session Hub (3 Tabs)**: Menyatukan Evaluasi Skill, Kecocokan Lowongan, dan Transkrip ke dalam satu halaman terpadu di `PortfolioPage.tsx` dengan auto-load FitGap report dan Quick Switch Badges.
+- [x] **Live Searchable Select (Combobox)**: Komponen `SearchableSelect.tsx` dengan auto-focus pencarian, deskripsi durasi/skill, dan clear button.
+- [x] **Modal Override Rating & Audit Trail**: Penyesuaian skor L1–L5 via Radix Dialog Modal dengan catatan alasan assessor, banner audit trail waktu riil, dan pencetakan otomatis ke laporan PDF.
+- [x] **Timer Synchronization**: Menghitung mundur durasi berdasarkan selisih riil `session.started_at` backend untuk mencegah dialog timeout palsu saat refresh.
+- [x] **Indonesian Language Localization**: Seluruh prompt evaluasi Gemini menghasilkan narasi dalam Bahasa Indonesia profesional untuk assessment berkode `id`, dilengkapi tombol `[ 🔄 Evaluasi Ulang AI ]`.
+- [x] **Candidate Counter on Assessment Cards**: Serializer `assessment_json` menyertakan `candidates_count` real-time di halaman utama `/assessments`.
+
+---
+
 ## Test Coverage — Ringkasan Akhir
 
-<!-- diisi pas semua sub-PR kelar: command yang dijalanin, hasil, coverage kalau ada -->
+| Suite | Command | Hasil | Cakupan Uji |
+|---|---|---|---|
+| **Frontend Unit Tests** | `npm test -- --run` | **25/25 Passing** | Constants, Auth Store, WebSocket Hook, Skill Card 3-State, Speed Test, Interview Page |
+| **Frontend Production Build** | `npm run build` | **Build Success (0 error)** | TypeScript compilation (`tsc`) & Vite bundling |
+| **Backend Model & Request Specs** | `bundle exec rspec` | **64/64 Passing** | Tenant isolation, IDOR prevention, Not-assessed skill state, Invite URL origin, Error handling |
+
+---
 
 ## Claimed Engineering Depth
 
-<!-- backend-heavy vs frontend-heavy, jujur porsi mana yang paling dalam digarap -->
+**Fullstack Balanced with Deep Product Engineering Rigor**:
+1. **Backend Depth (Rails & Gemini AI)**:
+   - Pengamanan multi-tenancy melalui `TenantScoped` concern di level database model.
+   - Penanganan integrasi live multimodal WebSocket dua arah (PCM audio streaming) dan HTTP fallback Gemini 3.5 Flash dengan instruksi bahasa Indonesia.
+   - Desain background worker Sidekiq yang tahan terhadap kegagalan parsing (*dead set avoidance*).
+2. **Frontend Depth (React, TypeScript & Modern UI/UX)**:
+   - Penanganan *state machine* wawancara (Hardware check, Reconnecting, Error state, Live Timer sync).
+   - Arsitektur antarmuka terpadu (*Unified Session Hub*), Combobox *SearchableSelect*, Popup Modal *Override* dengan jejak audit, dan sistem paginasi reusable.
+   - Standar Monozukuri: transisi visual halus, responsive mobile-ready, dan brand identity resmi Rakamin.

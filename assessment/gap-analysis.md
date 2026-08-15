@@ -44,6 +44,19 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Service**: api — **Jenis**: defective implementation
 - **Lokasi**: `api/app/models/session.rb:40-41` (sebelum fix) — `invite_url` bikin link pake `APP_BASE_URL`, yang didokumentasiin eksplisit di `api/README.md:30` dan `application.yml.sample:21` sebagai **"Backend base URL"** (default `http://localhost:3001`). Tapi `/interview/:token` itu route **frontend** (React Router/Vite), bukan route backend.
 - **Dampak**: Di environment manapun frontend & backend beda origin (yang emang normal buat arsitektur two-service ini), tombol "Copy link" yang dipake assessor buat ngundang kandidat ngehasilin URL yang nunjuk ke server API, bukan ke halaman interview. Kandidat yang buka link itu cuma dapet Rails routing error. Ini nutup **happy path paling dasar** — kandidat gak bisa mulai interview sama sekali lewat jalur utama, ditemuin pas manual testing "Copy link" beneran di browser.
+- **Status**: [x] **RESOLVED** (di-route ke `FRONTEND_BASE_URL` port 5173).
+
+### P0-7: Model Gemini Live Multimodal & HTTP Evaluasi Pensiun/Gagal Koneksi
+- **Service**: api & web — **Jenis**: defective implementation / model deprecation
+- **Lokasi**: `api/app/clients/gemini/live_client.rb` & `api/app/clients/gemini/http_client.rb` — Hardcoded string model `gemini-2.0-flash-exp` pensiun di server Google sehingga live voice interview WebSocket gagal handshake (404/400).
+- **Dampak**: Kandidat yang mulai wawancara suara live tidak dapat terhubung ke AI sama sekali (WebSocket connection aborted), dan proses generate evaluasi portfolio gagal di background.
+- **Status**: [x] **RESOLVED** (dimigrasikan ke endpoint produksi resmi `gemini-3.1-flash-live-preview` untuk live audio WebSocket dan `gemini-3.5-flash` pada `https://generativelanguage.googleapis.com/v1beta` untuk evaluasi HTTP).
+
+### P0-8: Fit/Gap Engine Infinite Loading & Silent Failure pada Lowongan Tanpa Skill
+- **Service**: api — **Jenis**: defective implementation / missing validation
+- **Lokasi**: `api/app/models/fit_gap_report.rb:7` & `api/app/services/fit_gap/engine.rb` — `validates :skill_comparisons, presence: true` menganggap array kosong `[]` sebagai invalid/blank saat membandingkan lowongan kosong. Akibatnya background worker gagal diam-diam dan browser terus melakukan polling tanpa henti (*infinite loading spinner*).
+- **Dampak**: Assessor yang memilih benchmark lowongan kosong mengalami halaman stuck loading "Generating fit/gap report..." selamanya.
+- **Status**: [x] **RESOLVED** (ditambahkan `allow_blank: true` pada validasi model `FitGapReport`, fallback anggun di `FitGap::Engine`, dan validasi wajib minimal 1 skill di frontend `VacancyNewPage`).
 
 ---
 
@@ -80,6 +93,19 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Dampak**: 2 lapis:
   1. Kalau `VITE_DEV_TOKEN` ke-set pas deploy staging/demo (gampang kejadian gak sengaja), token JWT asli ke-bundle plaintext di JS yang bisa diakses siapapun yang buka halamannya.
   2. **Dikonfirmasi reproduce**: selama `VITE_DEV_TOKEN` keisi (kondisi normal di dev lokal), klik "Logout" gak beneran ngelogout. `clearToken()` ngapus `localStorage`, tapi `authAtom` cuma di-init sekali pas module load (`atom<AuthState>({ token: getStoredToken() })`) — refresh browser bikin module ke-load ulang, `getStoredToken()` jatuh ke fallback `VITE_DEV_TOKEN` (non-null), `ProtectedRoute` liat token ada → lolos → auto-login balik ke `/assessments`. Assessor yang ngerasa udah logout (misal di komputer bersama) sebenernya masih ke-auth.
+- **Status**: [x] **RESOLVED**
+
+### P1-7: Timer Sesi Live Desinkronisasi & Peringatan Waktu Habis Palsu
+- **Service**: web — **Jenis**: defective implementation
+- **Lokasi**: `web/src/components/interview/InterviewTimer.tsx` — Menghitung mundur durasi berdasarkan interval lokal klien dari saat komponen dimount, bukan menghitung selisih waktu riil terhadap timestamp `started_at` dari backend.
+- **Dampak**: Jika koneksi kandidat terputus sebentar atau halaman direfresh, timer tereset dan memunculkan pop-up dialog waktu habis (*Time Expired*) sebelum durasi sebenarnya berakhir.
+- **Status**: [x] **RESOLVED** (timer disinkronkan langsung terhadap `session.started_at` dan trigger auto-finish saat batas durasi tercapai).
+
+### P1-8: Kebocoran Data Biner Audio Base64 pada Transkrip & Logging Percakapan
+- **Service**: api & web — **Jenis**: defective implementation / privacy leak
+- **Lokasi**: `api/app/channels/audio_websocket_middleware.rb` & `web/src/components/interview/TranscriptBubble.tsx` — Potongan data suara biner base64 sempat tercampur ke dalam gelembung teks transkrip sebelum model AI menyelesaikan konversi speech-to-text.
+- **Dampak**: Gelembung percakapan sempat menampilkan teks biner acak panjang yang mengganggu keterbacaan assessor serta berisiko log polusi.
+- **Status**: [x] **RESOLVED** (sanitasi parsing payload pesan suara dan pembersihan teks transkrip di middleware & komponen UI).
 
 ---
 

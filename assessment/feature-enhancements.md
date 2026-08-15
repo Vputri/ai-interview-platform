@@ -147,6 +147,79 @@ Seluruh icon placeholder / generik telah diganti dengan **Logo Resmi Rakamin**:
 
 ---
 
+## 8. Unified Session Hub (Tab-Based Layout)
+
+### 🔍 Latar Belakang & Masalah
+Sebelumnya, informasi sesi wawancara terpisah di route yang berbeda (`/portfolio`, `/fitgap`, `/transcript`). Assessor harus bolak-balik membuka menu terpisah dan tidak ada tombol yang mengarahkan langsung ke analisis fit/gap dari halaman hasil penilaian.
+
+### 🛠️ Implementasi
+- **3 Tab Terpadu** pada `PortfolioPage.tsx`:
+  1. **`[ 📊 Evaluasi Skill ]`**: Kartu kompetensi, badge level L1–L5, bukti kutipan wawancara (*Evidence*), dan tombol penyesuaian nilai (*Override*).
+  2. **`[ 🎯 Kecocokan Lowongan ]`**: Pemilih lowongan benchmark dengan `SearchableSelect`, tabel perbandingan skor target vs kandidat, narasi kultur perusahaan, dan rekomendasi perekrutan AI.
+  3. **`[ 💬 Transkrip Percakapan ]`**: Rekaman dialog suara dua arah antara AI dan Kandidat dengan opsi unduh PDF dan teks.
+- **Auto-Load & Quick Switch Badges**:
+  - Menampilkan badge lowongan yang telah dianalisis (misal: `[ eee ✓ ] [ ccc ]`).
+  - Mengklik badge langsung menampilkan hasil analisis tanpa memicu kalkulasi ulang ke AI.
+
+---
+
+## 9. Komponen Live Searchable Select (Combobox)
+
+### 🔍 Implementasi (`web/src/components/ui/searchable-select.tsx`)
+- Menggantikan elemen `<select>` native dengan Combobox interaktif.
+- Fitur:
+  - Kolom pencarian instan dengan auto-focus.
+  - Menampilkan deskripsi pelengkap (misal: *45 mins • 1 skills*).
+  - Checkmark terpilih (`✓`) dan tombol *Clear* (`✕`) untuk reset.
+  - Diterapkan pada filter lowongan di halaman **Candidates** (`/candidates`) dan pemilih benchmark **Fit/Gap**.
+
+---
+
+## 10. Modal Popup Override Rating & Kotak Audit Trail
+
+### 🔍 Implementasi
+- **Dialog Modal Popup** ([OverridePanel.tsx](file:///Volumes/Lexar/rakamin/ai-interview-platform/web/src/components/portfolio/OverridePanel.tsx)):
+  - Menampilkan perbandingan skor asli AI dan tingkat keyakinan (*Confidence*).
+  - Pemilih level baru L1–L5 yang responsif.
+  - Textarea **Alasan & Catatan Penyesuaian (*Assessor Notes*)**.
+- **Kotak Jejak Audit (*Audit Trail Box*)** ([SkillPortfolioCard.tsx](file:///Volumes/Lexar/rakamin/ai-interview-platform/web/src/components/portfolio/SkillPortfolioCard.tsx)):
+  - Menampilkan banner: `Penyesuaian Manual Assessor: Level L1 (AI) ➔ Level L2`.
+  - Dilengkapi waktu penyesuaian (misal: *15 Agu 2026, 07:44*) dan kutipan catatan assessor.
+  - Catatan assessor otomatis tercetak ke dalam dokumen PDF resmi ([pdf_generator.rb](file:///Volumes/Lexar/rakamin/ai-interview-platform/api/app/services/exports/pdf_generator.rb)).
+
+---
+
+## 11. Auto-Download PDF Tanpa Buka Tab Baru
+
+### 🔍 Implementasi
+- Menggunakan teknik *Hidden Iframe Direct Print/Save* pada halaman Transkrip ([TranscriptPage.tsx](file:///Volumes/Lexar/rakamin/ai-interview-platform/web/src/pages/transcript/TranscriptPage.tsx)).
+- Mengunduh atau mencetak PDF transkrip dialog secara instan di tab yang sama tanpa membuka tab baru yang mengganggu alur kerja pengguna.
+
+---
+
+## 12. Lokalisasi Penuh Bahasa Indonesia (Prompt Gemini 3.5 Flash & UI)
+
+### 🔍 Implementasi
+- **AI Generator Prompts**:
+  - `api/app/services/portfolios/generator.rb`: Prompt Gemini menghasilkan `competency_summary` dalam Bahasa Indonesia profesional jika assessment disetel ke bahasa `id`.
+  - `api/app/services/fit_gap/engine.rb`: Prompt Gemini menghasilkan `culture_narrative` dan `overall_narrative` dalam Bahasa Indonesia profesional.
+- **Tombol `[ 🔄 Evaluasi Ulang AI ]`**: Memungkinkan assessor memperbarui hasil evaluasi sesi lama ke Bahasa Indonesia dengan 1-klik cepat.
+- **Penyeragaman Terminologi HR Indonesia**:
+  - `Evaluasi Skill` (menggantikan *Portofolio Skill*).
+  - `Kecocokan Lowongan` (menggantikan *Analisis Fit/Gap*).
+  - `Bukti Kutipan Wawancara` (menggantikan *Evidence from interview*).
+  - `Ringkasan Kompetensi AI` (menggantikan *Competency summary*).
+
+---
+
+## 13. Indikator Jumlah Kandidat pada Kartu Assessment
+
+### 🔍 Implementasi
+- **Backend Serializer**: Menambahkan `candidates_count: assessment.sessions.size` pada serialisasi `assessment_json` di `AssessmentsController`.
+- **Frontend Header**: Menampilkan badge jumlah kandidat terdaftar pada setiap kartu di halaman `/assessments` (misal: `👥 14 kandidat`).
+
+---
+
 ## 🧪 Status Uji & Verifikasi
 - **Frontend Vitest**: `25/25` test passing (`npm test -- --run`).
 - **Production Build**: `tsc` & `vite build` selesai sukses tanpa error (`npm run build`).
