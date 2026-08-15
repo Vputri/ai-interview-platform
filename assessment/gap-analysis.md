@@ -100,11 +100,13 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Dampak**: Jika koneksi kandidat terputus sebentar atau halaman direfresh, timer tereset dan memunculkan pop-up dialog waktu habis (*Time Expired*) sebelum durasi sebenarnya berakhir.
 - **Status**: [x] **RESOLVED** (timer disinkronkan langsung terhadap `session.started_at` dan trigger auto-finish saat batas durasi tercapai).
 
-### P1-8: Kebocoran Data Biner Audio Base64 pada Transkrip & Logging Percakapan
-- **Service**: api & web — **Jenis**: defective implementation / privacy leak
-- **Lokasi**: `api/app/channels/audio_websocket_middleware.rb` & `web/src/components/interview/TranscriptBubble.tsx` — Potongan data suara biner base64 sempat tercampur ke dalam gelembung teks transkrip sebelum model AI menyelesaikan konversi speech-to-text.
-- **Dampak**: Gelembung percakapan sempat menampilkan teks biner acak panjang yang mengganggu keterbacaan assessor serta berisiko log polusi.
-- **Status**: [x] **RESOLVED** (sanitasi parsing payload pesan suara dan pembersihan teks transkrip di middleware & komponen UI).
+### P1-8: Kebocoran Data Biner Audio & Ambiguitas Transkripsi ASR Multibahasa
+- **Service**: api & web — **Jenis**: defective implementation / privacy leak & acoustic model ambiguity
+- **Lokasi**: `api/app/channels/audio_websocket_middleware.rb`, `api/app/services/assessments/system_prompt_compiler.rb`, & `web/src/components/interview/TranscriptBubble.tsx`
+- **Dampak**: 
+  1. Potongan data biner audio dan sisa kurung kurawal JSON (`}\n]`) sempat mengotori transkrip sebelum model AI selesai memproses audio.
+  2. Modul Speech-to-Text (ASR) Gemini sempat mengalami ambiguitas fonetik pada ucapan volume rendah/desis mic di awal sesi, secara keliru menebak audio Indonesia menjadi aksara asing (seperti Hangul Korea `마케팅...` atau Prancis `Donc, sa team...`).
+- **Status**: [x] **RESOLVED** (sanitasi parsing payload pesan suara di middleware & komponen UI, serta penambahan instruksi penguncian bahasa *Language Pinning Directive* di `SystemPromptCompiler` yang memaksa ASR Gemini mengunci transkripsi ke Bahasa Indonesia & istilah teknis standar Latin).
 
 ---
 

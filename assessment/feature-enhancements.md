@@ -220,6 +220,14 @@ Sebelumnya, informasi sesi wawancara terpisah di route yang berbeda (`/portfolio
 
 ---
 
+## 14. Penguncian Bahasa Transkripsi Suara (ASR Language Pinning Directive)
+
+### 🔍 Masalah & Implementasi
+- **Masalah**: Model Speech-to-Text Gemini Live yang bersifat multibahasa global terkadang mengalami ambiguitas fonetik pada suara bervolume rendah atau desis mikrofon di awal sesi, secara keliru menebak audio Indonesia menjadi aksara asing (Hangul Korea / Prancis).
+- **Implementasi**: Menambahkan aturan *Language Pinning Directive* pada `SystemPromptCompiler` yang memaksa ASR Gemini untuk secara ketat menginterpretasikan dan mentranskripsikan ucapan kandidat hanya ke dalam Bahasa Indonesia dan istilah teknis Latin standar.
+
+---
+
 ## 🧪 Status Uji & Verifikasi
 - **Frontend Vitest**: `25/25` test passing (`npm test -- --run`).
 - **Production Build**: `tsc` & `vite build` selesai sukses tanpa error (`npm run build`).
