@@ -24,6 +24,7 @@ RSpec.describe Organization, type: :model do
     end
 
     it "still finds the real organization even if a decoy table exists in ai_interview schema" do
+      ActiveRecord::Base.connection.execute("CREATE SCHEMA IF NOT EXISTS ai_interview")
       ActiveRecord::Base.connection.execute(<<~SQL)
         CREATE TABLE IF NOT EXISTS ai_interview.organizations (
           id bigserial PRIMARY KEY,
@@ -37,6 +38,7 @@ RSpec.describe Organization, type: :model do
         expect(Organization.identify("real-corp")).to eq(real_org)
       ensure
         ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS ai_interview.organizations")
+        ActiveRecord::Base.connection.execute("DROP SCHEMA IF EXISTS ai_interview CASCADE")
       end
     end
   end
