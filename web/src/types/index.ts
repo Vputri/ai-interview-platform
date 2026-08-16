@@ -2,12 +2,13 @@ export interface Assessment {
   id: number;
   name: string;
   time_limit_min: number;
-  language?: "en" | "id";
+  language?: "id" | "en";
   system_prompt?: string;
   created_by?: number;
   created_at?: string;
   updated_at?: string;
   skills?: AssessmentSkill[];
+  candidates_count?: number;
   latest_session?: {
     status: "pending" | "active" | "ended";
     end_reason?: string | null;
@@ -34,6 +35,8 @@ export interface AssessmentSkill {
 export interface Session {
   id: number;
   assessment_id: number;
+  assessment_name?: string;
+  role_title?: string;
   tenant_id?: number;
   candidate_id?: number;
   candidate_name?: string;
@@ -83,6 +86,7 @@ export interface Portfolio {
   generation_error?: string;
   skills: PortfolioSkill[];
   overrides: AssessorOverride[];
+  fit_gap_reports?: FitGapReport[];
 }
 
 export type PortfolioSkillStatus = "assessed" | "not_assessed" | "unparseable";
@@ -168,6 +172,11 @@ export interface CandidateInfo {
   role_title: string;
   time_limit_min: number;
   session_status: string;
+  candidate_name?: string;
+  /** ISO-8601 timestamp of when the backend activated this session (null if not yet started). */
+  started_at?: string | null;
+  /** Seconds already elapsed server-side since started_at, so the frontend timer can resume from the real remaining time. */
+  elapsed_seconds?: number | null;
 }
 
 export interface PaginationMeta {

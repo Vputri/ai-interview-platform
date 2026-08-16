@@ -8,10 +8,14 @@ module Api
 
       before_action :set_session, only: %i[show end_session coverage transcript]
 
-      # GET /api/v1/assessments/:assessment_id/sessions
+      # GET /api/v1/assessments/:assessment_id/sessions OR GET /api/v1/sessions
       def index
-        assessment = Assessment.find(params[:assessment_id])
-        sessions = assessment.sessions.order(created_at: :desc)
+        if params[:assessment_id].present?
+          assessment = Assessment.find(params[:assessment_id])
+          sessions = assessment.sessions.includes(:assessment).order(created_at: :desc)
+        else
+          sessions = Session.includes(:assessment).order(created_at: :desc)
+        end
 
         json_response(sessions: sessions.map(&method(:session_json)))
       rescue ActiveRecord::RecordNotFound
@@ -155,7 +159,9 @@ module Api
           role_title:      assessment.name,
           time_limit_min:  assessment.time_limit_min,
           session_status:  session.status,
-          candidate_name:  session.candidate_name
+          candidate_name:  session.candidate_name,
+          started_at:      session.started_at&.iso8601,
+          elapsed_seconds: session.started_at ? (Time.current - session.started_at).to_i : nil
         )
       end
 
@@ -171,6 +177,8 @@ module Api
         {
           id:               session.id,
           assessment_id:    session.assessment_id,
+          assessment_name:  session.assessment&.name,
+          role_title:       session.assessment&.name,
           tenant_id:        session.tenant_id,
           candidate_id:     session.candidate_id,
           candidate_name:   session.candidate_name,

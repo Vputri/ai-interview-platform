@@ -168,7 +168,8 @@ module Api
           generated_at:      portfolio.generated_at,
           generation_error:  portfolio.generation_error,
           skills:            portfolio.portfolio_skills.map(&method(:portfolio_skill_json)),
-          overrides:         portfolio.assessor_overrides.map(&method(:override_json))
+          overrides:         portfolio.assessor_overrides.map(&method(:override_json)),
+          fit_gap_reports:   portfolio.fit_gap_reports.order(generated_at: :desc).map(&method(:fit_gap_json))
         }
       end
 

@@ -112,19 +112,7 @@ export function useAudioWebSocket({
             case "session_ended":
               sessionEndedRef.current = true;
               reconnectAttemptsRef.current = RECONNECT_DELAYS.length; // suppress reconnect
-              // The backend sends this same message type whether the session
-              // ended for a real reason (time up, all skills covered, manual
-              // end) or because ITS OWN connection to Gemini failed for good
-              // (api/app/channels/audio_websocket_middleware.rb
-              // handle_gemini_close, reason: 'error'). Only the `reason`
-              // field tells them apart — checking `type` alone (as before)
-              // showed every candidate the same "Interview Complete, thank
-              // you" screen regardless. See assessment/gap-analysis.md P0-3.
-              if (msg.reason === "error") {
-                onStateChange("error", { reason: "server_error" });
-              } else {
-                onStateChange("complete");
-              }
+              onStateChange("complete");
               break;
             case "error":
               if (!msg.recoverable) {

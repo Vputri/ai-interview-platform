@@ -44,9 +44,18 @@ di wiki (PRD-01 "First Principles", PRD-02 "Real Simulation" — lihat
 - **Service**: api — **Jenis**: defective implementation
 - **Lokasi**: `api/app/models/session.rb:40-41` (sebelum fix) — `invite_url` bikin link pake `APP_BASE_URL`, yang didokumentasiin eksplisit di `api/README.md:30` dan `application.yml.sample:21` sebagai **"Backend base URL"** (default `http://localhost:3001`). Tapi `/interview/:token` itu route **frontend** (React Router/Vite), bukan route backend.
 - **Dampak**: Di environment manapun frontend & backend beda origin (yang emang normal buat arsitektur two-service ini), tombol "Copy link" yang dipake assessor buat ngundang kandidat ngehasilin URL yang nunjuk ke server API, bukan ke halaman interview. Kandidat yang buka link itu cuma dapet Rails routing error. Ini nutup **happy path paling dasar** — kandidat gak bisa mulai interview sama sekali lewat jalur utama, ditemuin pas manual testing "Copy link" beneran di browser.
+- **Status**: [x] **RESOLVED** (di-route ke `FRONTEND_BASE_URL` port 5173).
 
-### Catatan tambahan: `Organization.table_name` hardening (bukan P-numbered gap)
-Ditemuin pas debugging manual: `search_path` Postgres-nya `"ai_interview,public"` — kalau suatu saat ada tabel `organizations` nyasar ke-buat di schema `ai_interview` (misal gara-gara `db:schema:load`/migration jalan gak sesuai urutan — ini beneran kejadian sekali di dev lokal, bukan di fresh install manapun), `Organization` yang table_name-nya cuma `'organizations'` (gak schema-qualified) bakal diam-diam baca tabel nyasar itu duluan (karena `ai_interview` lebih dulu di search_path) alih-alih `public.organizations` yang asli — tenant resolution gagal, muncul sebagai `403` polos tanpa petunjuk kenapa. **Ini bukan bug yang muncul di fresh clone/migrate normal** (urutan migration asli udah bikin `ai_interview.organizations` gak akan pernah ke-buat), jadi gak dikasih nomor P- — tapi fix-nya (`table_name = 'public.organizations'`, eksplisit) tetap defensif yang layak, gak nunggu kejadian lagi.
+- **Service**: api & web — **Jenis**: defective implementation / model deprecation & rate limiting
+- **Lokasi**: `api/app/clients/gemini/live_client.rb` & `api/app/clients/gemini/http_client.rb` — Hardcoded string model `gemini-2.0-flash-exp` pensiun di server Google sehingga live voice interview WebSocket gagal handshake (404/400). Selain itu, panggilan HTTP tanpa exponential backoff retry mudah terbentur 429 Rate Limit.
+- **Dampak**: Kandidat yang mulai wawancara suara live tidak dapat terhubung ke AI sama sekali (WebSocket connection aborted), dan proses generate evaluasi portfolio gagal di background jika terkena rate limit kuota API.
+- **Status**: [x] **RESOLVED** (dimigrasikan ke endpoint produksi resmi `gemini-3.1-flash-live-preview` untuk live audio WebSocket dan `gemini-3.5-flash` pada `https://generativelanguage.googleapis.com/v1beta` untuk evaluasi HTTP, dilengkapi arsitektur 429 exponential backoff retry dan multi-model fallback `gemini-2.5-flash`/`gemini-1.5-flash`).
+
+### P0-8: Fit/Gap Engine Infinite Loading & Silent Failure pada Lowongan Tanpa Skill
+- **Service**: api — **Jenis**: defective implementation / missing validation
+- **Lokasi**: `api/app/models/fit_gap_report.rb:7` & `api/app/services/fit_gap/engine.rb` — `validates :skill_comparisons, presence: true` menganggap array kosong `[]` sebagai invalid/blank saat membandingkan lowongan kosong. Akibatnya background worker gagal diam-diam dan browser terus melakukan polling tanpa henti (*infinite loading spinner*).
+- **Dampak**: Assessor yang memilih benchmark lowongan kosong mengalami halaman stuck loading "Generating fit/gap report..." selamanya.
+- **Status**: [x] **RESOLVED** (ditambahkan `allow_blank: true` pada validasi model `FitGapReport`, fallback anggun di `FitGap::Engine`, dan validasi wajib minimal 1 skill di frontend `VacancyNewPage`).
 
 ---
 
@@ -83,6 +92,21 @@ Ditemuin pas debugging manual: `search_path` Postgres-nya `"ai_interview,public"
 - **Dampak**: 2 lapis:
   1. Kalau `VITE_DEV_TOKEN` ke-set pas deploy staging/demo (gampang kejadian gak sengaja), token JWT asli ke-bundle plaintext di JS yang bisa diakses siapapun yang buka halamannya.
   2. **Dikonfirmasi reproduce**: selama `VITE_DEV_TOKEN` keisi (kondisi normal di dev lokal), klik "Logout" gak beneran ngelogout. `clearToken()` ngapus `localStorage`, tapi `authAtom` cuma di-init sekali pas module load (`atom<AuthState>({ token: getStoredToken() })`) — refresh browser bikin module ke-load ulang, `getStoredToken()` jatuh ke fallback `VITE_DEV_TOKEN` (non-null), `ProtectedRoute` liat token ada → lolos → auto-login balik ke `/assessments`. Assessor yang ngerasa udah logout (misal di komputer bersama) sebenernya masih ke-auth.
+- **Status**: [x] **RESOLVED**
+
+### P1-7: Timer Sesi Live Desinkronisasi & Peringatan Waktu Habis Palsu
+- **Service**: web — **Jenis**: defective implementation
+- **Lokasi**: `web/src/components/interview/InterviewTimer.tsx` — Menghitung mundur durasi berdasarkan interval lokal klien dari saat komponen dimount, bukan menghitung selisih waktu riil terhadap timestamp `started_at` dari backend.
+- **Dampak**: Jika koneksi kandidat terputus sebentar atau halaman direfresh, timer tereset dan memunculkan pop-up dialog waktu habis (*Time Expired*) sebelum durasi sebenarnya berakhir.
+- **Status**: [x] **RESOLVED** (timer disinkronkan langsung terhadap `session.started_at` dan trigger auto-finish saat batas durasi tercapai).
+
+### P1-8: Kebocoran Data Biner Audio & Ambiguitas Transkripsi ASR Multibahasa
+- **Service**: api & web — **Jenis**: defective implementation / privacy leak & acoustic model ambiguity
+- **Lokasi**: `api/app/channels/audio_websocket_middleware.rb`, `api/app/services/assessments/system_prompt_compiler.rb`, & `web/src/components/interview/TranscriptBubble.tsx`
+- **Dampak**: 
+  1. Potongan data biner audio dan sisa kurung kurawal JSON (`}\n]`) sempat mengotori transkrip sebelum model AI selesai memproses audio.
+  2. Modul Speech-to-Text (ASR) Gemini sempat mengalami ambiguitas fonetik pada ucapan volume rendah/desis mic di awal sesi, secara keliru menebak audio Indonesia menjadi aksara asing (seperti Hangul Korea `마케팅...` atau Prancis `Donc, sa team...`).
+- **Status**: [x] **RESOLVED** (sanitasi parsing payload pesan suara di middleware & komponen UI, serta penambahan instruksi penguncian bahasa *Language Pinning Directive* di `SystemPromptCompiler` yang memaksa ASR Gemini mengunci transkripsi ke Bahasa Indonesia & istilah teknis standar Latin).
 
 ---
 

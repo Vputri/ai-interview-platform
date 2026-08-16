@@ -30,7 +30,7 @@ Rails.application.routes.draw do
       end
 
       # Sessions
-      resources :sessions, only: %i[show] do
+      resources :sessions, only: %i[index show] do
         member do
           post :end_session
           get  :coverage

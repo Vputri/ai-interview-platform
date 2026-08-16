@@ -419,22 +419,3 @@ desain yang punya sisi lain buat dipertimbangin.
 **Fix**: tambah env var baru `FRONTEND_BASE_URL`, ganti `invite_url` biar
 pake itu, bukan `APP_BASE_URL`. Update dokumentasi (`README.md`,
 `application.yml.sample`) biar jelas beda fungsi 2 env var itu.
-
----
-
-## Bonus 3: `Organization.table_name` schema-qualification + expose `candidate_name`
-
-Dua perubahan kecil gak berhubungan langsung, digabung 1 PR karena
-sama-sama backend-kecil:
-
-1. **`Organization.table_name` di-qualify eksplisit** jadi
-   `'public.organizations'` — hardening defensif terhadap ambiguitas
-   `search_path`. Lihat catatan di gap-analysis.md (bukan P-numbered gap,
-   ini insiden dev lokal, bukan bug fresh-install). Test: pin
-   `table_name`, plus test yang beneran simulasiin skenario bahaya (bikin
-   tabel decoy `ai_interview.organizations` di test, buktiin
-   `Organization.identify` tetep bener nemuin yang asli).
-2. **`candidate_info` endpoint expose `candidate_name`** — field udah ada
-   di tabel `sessions` dari awal, cuma belum pernah disertain di response
-   JSON; frontend butuh ini buat nyapa kandidat pake nama di halaman
-   interview. Gak ada trade-off — nambah 1 field ke response, non-breaking.

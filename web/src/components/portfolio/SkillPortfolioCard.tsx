@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import LevelBadge from "./LevelBadge";
 import ConfidenceIndicator from "./ConfidenceIndicator";
 import OverridePanel from "./OverridePanel";
-import { Zap, MinusCircle, AlertTriangle } from "lucide-react";
+import { Zap, MinusCircle, AlertTriangle, UserCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseLevel } from "@/utils/constants";
 import type { PortfolioSkill, AssessorOverride } from "@/types";
@@ -16,15 +16,15 @@ interface SkillPortfolioCardProps {
 const UNASSESSED_COPY = {
   not_assessed: {
     icon: MinusCircle,
-    label: "Not assessed",
-    detail: "This skill was configured for the assessment but wasn't covered during the interview.",
+    label: "Belum Diuji",
+    detail: "Skill ini dikonfigurasi pada asesmen namun belum sempat diuji selama sesi wawancara.",
     classes: "border-dashed text-muted-foreground",
     iconClasses: "text-muted-foreground",
   },
   unparseable: {
     icon: AlertTriangle,
-    label: "Needs manual review",
-    detail: "The assessment model's response for this skill couldn't be scored automatically.",
+    label: "Perlu Peninjauan Manual",
+    detail: "Hasil respon untuk skill ini belum dapat diskor otomatis dan membutuhkan peninjauan manual.",
     classes: "border-amber-300",
     iconClasses: "text-amber-600",
   },
@@ -107,23 +107,55 @@ export default function SkillPortfolioCard({
           <OverridePanel skill={assessedSkill} existingOverride={override} onSaved={onOverrideSaved} />
         </div>
 
+        {/* Assessor Override Audit Box */}
+        {override && (
+          <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3 space-y-1.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                <UserCheck className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span>
+                  Penyesuaian Manual Assessor: Level {parseLevel(skill.ai_level)} (AI) ➔ Level {override.override_level}
+                </span>
+              </div>
+              {override.overridden_at && (
+                <span className="text-[11px] text-indigo-600 font-medium flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {new Date(override.overridden_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              )}
+            </div>
+            {override.assessor_notes && (
+              <div className="text-slate-700 bg-white/90 rounded-lg p-2.5 border border-indigo-100/80 mt-1 leading-relaxed shadow-2xs">
+                <span className="font-bold text-slate-900 block text-[11px] mb-0.5">Catatan Assessor:</span>
+                "{override.assessor_notes}"
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Low confidence note */}
         {assessedSkill.ai_confidence.toLowerCase() === "low" && (
-          <div className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded px-3 py-2">
-            Only briefly explored. Confidence is low — warrants a dedicated session if this skill matters.
+          <div className="text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl px-3 py-2 leading-relaxed">
+            Eksplorasi singkat. Tingkat keyakinan AI masih rendah — disarankan konfirmasi lebih lanjut jika skill ini kritikal bagi posisi.
           </div>
         )}
 
         {/* Evidence */}
         {skill.evidence.length > 0 && (
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Evidence from interview
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+              Bukti Kutipan Wawancara
             </span>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {skill.evidence.map((quote, i) => (
-                <li key={i} className="text-sm text-foreground">
-                  • "{quote}"
+                <li key={i} className="text-xs sm:text-sm text-slate-800 bg-slate-50/60 rounded-lg p-2 border border-slate-200/60 leading-relaxed italic">
+                  "{quote}"
                 </li>
               ))}
             </ul>
@@ -133,10 +165,10 @@ export default function SkillPortfolioCard({
         {/* Competency summary */}
         {skill.competency_summary && (
           <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Competency summary
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+              Ringkasan Kompetensi AI
             </span>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
               {skill.competency_summary}
             </p>
           </div>

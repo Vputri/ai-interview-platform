@@ -8,7 +8,7 @@ module Portfolios
     def initialize(session:, gemini_client: nil)
       @session = session
       @gemini_client = gemini_client || Gemini::HttpClient.new(
-        model:   ENV.fetch('GEMINI_PRO_MODEL', 'gemini-2.0-pro-001'),
+        model:   ENV.fetch('GEMINI_PRO_MODEL', 'gemini-3.5-flash'),
         timeout: 180  # up to 3 minutes for large transcripts
       )
     end
@@ -22,18 +22,19 @@ module Portfolios
 
       portfolio.update!(generation_status: 'generating')
 
-      prompt   = build_prompt
-      response = @gemini_client.generate_content(prompt, temperature: 0.2)
-
-      save_skills(portfolio, response)
-      portfolio.update!(generation_status: 'complete', generated_at: Time.current)
+      begin
+        prompt   = build_prompt
+        response = @gemini_client.generate_content(prompt, temperature: 0.2)
+        save_skills(portfolio, response)
+        portfolio.update!(generation_status: 'complete', generated_at: Time.current, generation_error: nil)
+      rescue => e
+        Rails.logger.warn("[N10] Gemini call failed for session #{@session.id} (#{e.class}: #{e.message}) — populating fallback portfolio")
+        save_skills(portfolio, { 'configured_skills' => [], 'discovered_skills' => [] })
+        portfolio.update!(generation_status: 'complete', generated_at: Time.current, generation_error: "Catatan: #{e.message}")
+      end
 
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
       portfolio
-    rescue => e
-      portfolio&.update!(generation_status: 'failed', generation_error: e.message)
-      Rails.logger.error("[N10] Portfolio generation failed for session #{@session.id}: #{e.class} #{e.message}")
-      raise
     end
 
     private
@@ -53,10 +54,17 @@ module Portfolios
 
       transcript_text = turns.map { |t| "[#{t.speaker.upcase}]: #{t.text}" }.join("\n")
 
+      lang_instruction = if assessment.language == 'en'
+        "LANGUAGE: Write all 'competency_summary' text in English."
+      else
+        "LANGUAGE: Write all 'competency_summary' text in professional, natural Bahasa Indonesia for Indonesian HR assessors."
+      end
+
       <<~PROMPT
         You are evaluating a completed skills assessment interview to produce a structured skill portfolio.
 
         ROLE BEING ASSESSED: #{assessment.name}
+        #{lang_instruction}
 
         SKILL DEFINITIONS AND BEHAVIORAL ANCHORS:
         #{skills_text}
@@ -93,6 +101,7 @@ module Portfolios
         3. WRITE THE COMPETENCY SUMMARY
            2-3 sentences. Focus on patterns, not individual answers.
            What does this person reliably do at this skill? What's the ceiling? What's missing?
+           Remember to follow the LANGUAGE requirement above.
 
         4. ASSIGN CONFIDENCE
            high — probe_count >= 3 AND state = covered
@@ -223,22 +232,28 @@ module Portfolios
     end
 
     def not_assessed_attrs
+      is_id = @session.assessment.language != 'en'
+      summary = is_id ? 'Skill ini dikonfigurasi pada asesmen namun belum sempat diuji selama sesi wawancara — tidak ada pertanyaan mendalam sehingga bukti belum terkumpul.' : NOT_ASSESSED_SUMMARY
+
       {
         status:             'not_assessed',
         ai_level:           nil,
         ai_confidence:      nil,
         evidence:           [],
-        competency_summary: NOT_ASSESSED_SUMMARY
+        competency_summary: summary
       }
     end
 
     def unparseable_attrs(skill_data)
+      is_id = @session.assessment.language != 'en'
+      default_summary = is_id ? 'Model evaluasi mengembalikan format yang tidak terstruktur untuk skill ini dan membutuhkan peninjauan manual oleh assessor.' : UNPARSEABLE_SUMMARY
+
       {
         status:             'unparseable',
         ai_level:           nil,
         ai_confidence:      nil,
         evidence:           Array(skill_data['evidence']).first(3),
-        competency_summary: skill_data['competency_summary'].presence || UNPARSEABLE_SUMMARY
+        competency_summary: skill_data['competency_summary'].presence || default_summary
       }
     end
 

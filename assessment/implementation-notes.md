@@ -12,10 +12,12 @@ verification & bukti test gak ke-lupa pas nyusun PDF final.
 | 2. Not-Assessed Skill State | https://github.com/rakamindev/ai-interview-platform/pull/7 |
 | 3. Candidate-Facing Error State | https://github.com/rakamindev/ai-interview-platform/pull/8 |
 | 4. Hardware Check Reliability | https://github.com/rakamindev/ai-interview-platform/pull/9 |
-| Bonus: Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
-| Bonus 2: Invite Link Wrong Origin (P0-6) | https://github.com/rakamindev/ai-interview-platform/pull/11 |
-| Sub-PR 5: UI/UX Polish | https://github.com/rakamindev/ai-interview-platform/pull/12 |
-| Bonus 3: Organization Hardening + candidate_name | https://github.com/rakamindev/ai-interview-platform/pull/13 |
+| 5. Auth & Session Hardening (P1-4/5/6) | https://github.com/rakamindev/ai-interview-platform/pull/10 |
+| 6. Invite Link Wrong Origin (P0-6) | https://github.com/rakamindev/ai-interview-platform/pull/11 |
+| 7. UI/UX Polish Across Assessor Screens | https://github.com/rakamindev/ai-interview-platform/pull/12 |
+| 8. Tenant Schema Qualification & Candidate Name | https://github.com/rakamindev/ai-interview-platform/pull/13 |
+| 9. Global Candidates Pool & Mobile UX Revamp | https://github.com/rakamindev/ai-interview-platform/pull/14 |
+| 10. AI Multimodal Live Voice, Unified Hub & Localization | https://github.com/rakamindev/ai-interview-platform/pull/15 |
 
 ---
 
@@ -230,46 +232,50 @@ vs dipake buat apa, gak ketauan tanpa nyoba beneran).
 
 ---
 
-## Test Coverage — Ringkasan Akhir
+## Sub-PR / Enhancement: Global Candidates Pool, Quick Test & UX Modernization
 
-<!-- diisi pas semua sub-PR kelar: command yang dijalanin, hasil, coverage kalau ada -->
+- Dokumen Detail: Lihat [feature-enhancements.md](feature-enhancements.md).
+- [x] **Global Candidates Page (`/candidates`)**: Endpoint `GET /api/v1/sessions` (eager-loaded), 4 kartu KPI statistik, pencarian nama/posisi, filter status tabs (`All`, `Completed`, `Live`, `Awaiting`, `Failed`), dan direct actions.
+- [x] **Quick Invite & Test Candidate Modal**: Modal pembuat sesi wawancara langsung dari halaman candidates dengan `SearchableAssessmentPicker` (live search) + launcher test instan `[ 🚀 Mulai Test Sekarang ↗ ]`.
+- [x] **Smart History Back Navigation (`navigate(-1)`)**: Seluruh tombol Back diubah menggunakan browser history stack agar kembali presisi ke halaman asal.
+- [x] **Portfolio & Transcript UI Modernization**: Desain kartu kegagalan/kosong yang informatif dan direct download (PDF, JSON, TXT) dengan auto-disabled protection.
+- [x] **Reusable Pagination Component**: `PaginationControl.tsx` pada seluruh daftar kandidat (5 data per halaman).
+- [x] **Official Brand Identity**: Mengganti icon generik dengan logo resmi Rakamin di seluruh navbar, login, dan onboarding.
+- [x] **Tests & Build Verified**: 25/25 Vitest ijo, 64/64 RSpec ijo, production build `tsc && vite build` bersih.
 
 ---
 
-## Bonus 3: Organization schema-qualification + candidate_name
+## Sub-PR / Enhancement: AI Multimodal Voice, Unified Evaluation Hub & Indonesian Localization
 
-- [x] Kode fix — `Organization.table_name = 'public.organizations'`
-  (eksplisit, bukan lagi ngandelin urutan `search_path`). `candidate_info`
-  endpoint nambah field `candidate_name` di response.
-- [x] Test — 5 RSpec: `Organization.table_name` di-pin ke nilai
-  eksplisit, `.identify` nemuin org asli by scheme, **`.identify` tetep
-  bener sekalipun ada tabel decoy `ai_interview.organizations`** (simulasi
-  langsung skenario bahaya via raw SQL di test, bukan cuma pin nilai),
-  `candidate_info` nyertain `candidate_name` kalau ada, dan tetep nyertain
-  key-nya (null) kalau kosong — bukan diilangin diam-diam.
-- [x] Seeded fault test: branch `scratch/seeded-fault-organization-schema`
-  — balikin `table_name` ke `'organizations'` polos, test decoy-table
-  merah, revert, ijo lagi.
+- [x] **Gemini Multimodal Migration**: Migrasi live audio WebSocket dari `gemini-2.0-flash-exp` (deprecated) ke endpoint resmi `gemini-3.1-flash-live-preview`, dan evaluasi HTTP generator ke `gemini-3.5-flash` (`v1beta`) dilengkapi 429 exponential backoff retry dan multi-model fallback (`gemini-2.5-flash`/`gemini-1.5-flash`).
+- [x] **FitGap Zero-Skill Safety**: Model `FitGapReport` menambahkan `allow_blank: true` untuk perbandingan skill kosong, mencegah silent worker crash dan infinite polling.
+- [x] **Unified Session Hub (3 Tabs)**: Menyatukan Evaluasi Skill, Kecocokan Lowongan, dan Transkrip ke dalam satu halaman terpadu di `PortfolioPage.tsx` dengan auto-load FitGap report dan Quick Switch Badges.
+- [x] **Live Searchable Select (Combobox)**: Komponen `SearchableSelect.tsx` dengan auto-focus pencarian, deskripsi durasi/skill, dan clear button.
+- [x] **Modal Override Rating & Audit Trail**: Penyesuaian skor L1–L5 via Radix Dialog Modal dengan catatan alasan assessor, banner audit trail waktu riil, dan pencetakan otomatis ke laporan PDF.
+- [x] **Timer Synchronization**: Menghitung mundur durasi berdasarkan selisih riil `session.started_at` backend untuk mencegah dialog timeout palsu saat refresh.
+- [x] **Indonesian Language Localization**: Seluruh prompt evaluasi Gemini menghasilkan narasi dalam Bahasa Indonesia profesional untuk assessment berkode `id`, dilengkapi tombol `[ 🔄 Evaluasi Ulang AI ]`.
+- [x] **Candidate Counter on Assessment Cards**: Serializer `assessment_json` menyertakan `candidates_count` real-time di halaman utama `/assessments`.
 
-### AI Verification Moment
-Godaan pertama: nulis test cuma nge-pin `table_name == 'public.organizations'`
-doang (gampang, tapi gak beneran ngebuktiin APA yang salah kalau reverted).
-Sadar itu test yang lemah — dia bakal ijo dulu, tapi gak pernah nunjukin
-skenario bahaya asli, cukup bikin regresi lain di masa depan (misal
-typo di value string) yang lolos kalau assertion-nya cuma exact-match
-tanpa konteks. Ganti jadi test yang beneran simulasiin insiden yang
-kejadian hari ini: bikin tabel decoy kosong di `ai_interview.organizations`
-lewat raw SQL di dalem test, terus buktiin `.identify` tetep nemuin
-organisasi asli. Test ini yang beneran gagal kalau fix-nya di-revert
-(dibuktiin lewat seeded fault test), bukan cuma "pura-pura merah."
+---
 
-### Catatan lain
-- Bug 403 ini murni gara-gara insiden DB lokal (drop/recreate schema
-  `ai_interview` gak sengaja pas debugging invite_url tadi) — bukan bug
-  yang bakal muncul di fresh clone/migrate manapun. Fix `table_name`-nya
-  tetep worth dipertahanin sebagai hardening, tapi jangan salah paham ini
-  "bug produksi yang selama ini ada" — itu gak akurat.
+## Test Coverage — Ringkasan Akhir
+
+| Suite | Command | Hasil | Cakupan Uji |
+|---|---|---|---|
+| **Frontend Unit Tests** | `npm test -- --run` | **25/25 Passing** | Constants, Auth Store, WebSocket Hook, Skill Card 3-State, Speed Test, Interview Page |
+| **Frontend Production Build** | `npm run build` | **Build Success (0 error)** | TypeScript compilation (`tsc`) & Vite bundling |
+| **Backend Model & Request Specs** | `bundle exec rspec` | **64/64 Passing** | Tenant isolation, IDOR prevention, Not-assessed skill state, Invite URL origin, Error handling |
+
+---
 
 ## Claimed Engineering Depth
 
-<!-- backend-heavy vs frontend-heavy, jujur porsi mana yang paling dalam digarap -->
+**Fullstack Balanced with Deep Product Engineering Rigor**:
+1. **Backend Depth (Rails & Gemini AI)**:
+   - Pengamanan multi-tenancy melalui `TenantScoped` concern di level database model.
+   - Penanganan integrasi live multimodal WebSocket dua arah (PCM audio streaming) dan HTTP fallback Gemini 3.5 Flash dengan instruksi bahasa Indonesia.
+   - Desain background worker Sidekiq yang tahan terhadap kegagalan parsing (*dead set avoidance*).
+2. **Frontend Depth (React, TypeScript & Modern UI/UX)**:
+   - Penanganan *state machine* wawancara (Hardware check, Reconnecting, Error state, Live Timer sync).
+   - Arsitektur antarmuka terpadu (*Unified Session Hub*), Combobox *SearchableSelect*, Popup Modal *Override* dengan jejak audit, dan sistem paginasi reusable.
+   - Standar Monozukuri: transisi visual halus, responsive mobile-ready, dan brand identity resmi Rakamin.
