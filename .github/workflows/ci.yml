@@ -53,3 +53,18 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
+
+  security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install brakeman bundler-audit --no-document
+      # EOLRails is the Rails 7.0 upgrade escalation (see .bundler-audit.yml); every other warning fails.
+      - run: brakeman -q --no-pager -x EOLRails
+      - run: bundler-audit check --update
