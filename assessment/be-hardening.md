@@ -102,3 +102,7 @@ A dipilih: state sudah ada di DB, `with_lock` cukup, dan gak nambah dependency.
 4. Upgrade jwt 3.x dan Ruby image `3.3.2` (Dockerfile) belum diuji di luar suite; verifikasi di staging.
 5. Env `staging` masih mengembalikan `e.message` mentah pada error 500 (hanya `production` yang disamarkan).
 6. Tombol/form catatan override di FE belum membatasi 2000 karakter (server sudah menolak dengan 422).
+7. **Audio WebSocket tidak mencegah koneksi ganda** (bug, terbuka, belum ada test): dua tab dengan invite yang sama membuka dua sesi Gemini untuk satu interview, jadi biaya ganda dan transkrip bisa tercampur. `StartHandler` hanya menjaga `started_at` lewat `unless session.active?`, bukan koneksi. Perbaikan yang direncanakan: lock Redis `SET NX EX` per `session_id` yang diperpanjang saat ping, ditolak dengan `code: 'already_connected'`. Butuh Redis di test (atau store in-memory) dan test WS.
+8. **JWT disimpan di `localStorage`** (`web/src/stores/authAtom.ts`): terbaca oleh script apa pun bila ada XSS. Risiko kecil saat ini karena tidak ada `dangerouslySetInnerHTML`/`innerHTML` di `web/src`. Alternatif (cookie `HttpOnly` + CSRF) mengubah auth FE dan BE, jadi tidak dikerjakan di PR ini.
+9. **`audio_websocket_middleware.rb` (800+ baris) belum punya test perilaku end-to-end** (timer, reconnect, transisi coverage). Yang teruji baru autentikasi dan batas ukuran pesan (`spec/channels/`). Ini risiko struktural terbesar yang tersisa; prioritas berikutnya bersama item 3 dan 7.
+
