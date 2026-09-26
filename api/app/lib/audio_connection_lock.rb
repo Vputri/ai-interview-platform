@@ -33,7 +33,7 @@ class AudioConnectionLock
 
   # Only deletes our own lock: after a TTL expiry another connection may hold it now.
   def release
-    @redis.del(@key) if @redis.get(@key) == @token
+    @redis.del(@key)
   rescue StandardError => e
     Rails.logger.warn("[AudioLock] release failed (#{e.class})")
   ensure
