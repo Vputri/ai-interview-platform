@@ -42,7 +42,7 @@ A dipilih: state sudah ada di DB, `with_lock` cukup, dan gak nambah dependency.
 
 ## Bukti (Monozukuri)
 
-- RSpec: 69 → 118 contoh (0 gagal), jalan **tanpa `application.yml` dan tanpa Redis** (disimulasikan, lihat CI env).
+- RSpec: 69 → 119 contoh (0 gagal), jalan **tanpa `application.yml` dan tanpa Redis** (disimulasikan, lihat CI env).
 - CI baru: `.github/workflows/ci.yml` (rspec + `tsc` + vitest).
 - Seeded fault — tiap fix dirusak di scratch branch, test gagal, lalu di-revert (history terlihat):
 
