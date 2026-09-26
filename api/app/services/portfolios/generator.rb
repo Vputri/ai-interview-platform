@@ -43,7 +43,6 @@ module Portfolios
         Rails.logger.warn("[N10] Generation failed for session #{@session.id} (#{e.class})")
         # e.message can echo request details from the model API, so only the class is stored.
         portfolio.update!(generation_status: 'pending', generation_error: "Generation failed (#{e.class.name})")
-        raise
       end
 
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
