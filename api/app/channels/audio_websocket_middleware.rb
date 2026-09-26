@@ -8,6 +8,9 @@ class AudioWebSocketMiddleware
   AUDIO_PATH_PATTERN = %r{\A/ws/sessions/([^/]+)/audio\z}
 
   MAX_RECONNECT_ATTEMPTS = 3
+  # Browser chunks are ~1 KB (16 kHz PCM at ~33/s); 1 MB is far above any real message
+  # but stops a single connection from making the server buffer websocket-driver's 64 MB default.
+  MAX_MESSAGE_BYTES = 1 * 1024 * 1024
   RECONNECT_BACKOFF = [1, 2, 4].freeze
   BROWSER_GRACE_PERIOD = 120 # seconds to keep Gemini alive after browser disconnects
   PROACTIVE_RECONNECT_AFTER = ENV.fetch('PROACTIVE_RECONNECT_AFTER', 510).to_i
@@ -36,7 +39,7 @@ class AudioWebSocketMiddleware
   private
 
   def handle_audio_websocket(env, session_id)
-    browser_ws = Faye::WebSocket.new(env, nil, ping: 30)
+    browser_ws = Faye::WebSocket.new(env, nil, ping: 30, max_length: MAX_MESSAGE_BYTES)
     state = ConnectionState.new
 
     browser_ws.on(:open)    { |_event| handle_browser_open(env, session_id, browser_ws, state) }

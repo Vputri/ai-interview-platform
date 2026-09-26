@@ -25,6 +25,22 @@ RSpec.describe "Api::V1::PortfolioSkills", type: :request do
       expect(own_skill.reload.assessor_override.override_level).to eq(4)
     end
 
+    it "rejects an override level outside 1..5" do
+      post "/api/v1/portfolio_skills/#{own_skill.id}/override",
+           params: { override: { override_level: 6 } }, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(own_skill.reload.assessor_override).to be_nil
+    end
+
+    it "rejects unbounded assessor notes (stored, exported to PDF and fed to the model)" do
+      post "/api/v1/portfolio_skills/#{own_skill.id}/override",
+           params: { override: { override_level: 3, assessor_notes: "x" * 5_000 } }, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(own_skill.reload.assessor_override).to be_nil
+    end
+
     it "returns 404 instead of letting another tenant's candidate score be overwritten" do
       post "/api/v1/portfolio_skills/#{other_skill.id}/override",
            params: { override: { override_level: 1, assessor_notes: "malicious" } }, headers: headers

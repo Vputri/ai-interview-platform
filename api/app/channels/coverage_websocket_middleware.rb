@@ -5,6 +5,8 @@ require 'faye/websocket'
 # Rack middleware for assessor live coverage monitoring at /ws/sessions/:id/coverage.
 # Server-push only: subscribes to Redis pub/sub and forwards coverage updates to the assessor.
 class CoverageWebSocketMiddleware
+  # Server-push only: the only thing a client sends is the JWT auth message.
+  MAX_MESSAGE_BYTES = 16 * 1024
   COVERAGE_PATH_PATTERN = %r{\A/ws/sessions/([^/]+)/coverage\z}
 
   def initialize(app)
@@ -24,7 +26,7 @@ class CoverageWebSocketMiddleware
   private
 
   def handle_coverage_websocket(env, session_id)
-    ws = Faye::WebSocket.new(env, nil, ping: 30)
+    ws = Faye::WebSocket.new(env, nil, ping: 30, max_length: MAX_MESSAGE_BYTES)
 
     redis_sub = nil  # track subscription Redis instance for cleanup
 
