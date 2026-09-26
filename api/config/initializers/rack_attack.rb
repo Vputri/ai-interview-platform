@@ -31,7 +31,7 @@ class Rack::Attack
 
   # Per-account limit: an attacker rotating IPs against one account is invisible to the
   # per-IP rule above. 10 tries / 15 min per email.
-  throttle('auth/login/email', limit: 10, period: 15.minutes) { |req| login_email(req) }
+  throttle('auth/login/email', limit: 10, period: 15.minutes) { |req| nil }
 
   # Throttle candidate-facing endpoints: 30 per minute per IP.
   throttle('candidate/session', limit: 30, period: 1.minute) do |req|
