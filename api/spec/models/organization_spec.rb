@@ -34,6 +34,13 @@ RSpec.describe Organization, type: :model do
         expect(results).to all(eq(org_b))
       end
 
+      it "prefers scheme even when the scheme match has the lower id (order must not just follow id)" do
+        first  = create(:organization, name: "C", scheme: "dup", identifier: "c-ident", host: "c.example.com")
+        _later = create(:organization, name: "D", scheme: "d-scheme", identifier: "dup", host: "d.example.com")
+
+        expect(Organization.identify("dup")).to eq(first)
+      end
+
       it "still resolves by host when nothing matches on scheme or identifier" do
         expect(Organization.identify("a.example.com")).to eq(org_a)
       end
