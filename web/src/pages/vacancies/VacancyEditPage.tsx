@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadError from "@/components/LoadError";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import { vacanciesApi } from "@/services/vacancies";
@@ -26,6 +27,8 @@ export default function VacancyEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +39,13 @@ export default function VacancyEditPage() {
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     vacanciesApi.get(Number(id)).then((res) => {
       const v = res.data.vacancy;
       reset({ role_title: v.role_title, culture_dimensions: v.culture_dimensions ?? "", competency_expectations: v.competency_expectations ?? "", skills: v.skills ?? [] });
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [id, reset]);
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false));
+  }, [id, reset, reloadKey]);
 
   const onSubmit = async (data: VacancyFormValues) => {
     setError(null);
@@ -59,6 +64,8 @@ export default function VacancyEditPage() {
       setSubmitting(false);
     }
   };
+
+  if (loadError) return <LoadError what="this vacancy" onRetry={() => setReloadKey((k) => k + 1)} />;
 
   if (loading) {
     return (

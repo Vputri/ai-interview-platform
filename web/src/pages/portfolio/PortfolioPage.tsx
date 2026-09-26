@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadError from "@/components/LoadError";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -45,6 +46,8 @@ export default function PortfolioPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [overrides, setOverrides] = useState<Record<number, AssessorOverride>>({});
   const [candidateName, setCandidateName] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
@@ -89,6 +92,8 @@ export default function PortfolioPage() {
   }, [sessionId]);
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       fetchPortfolio(),
       vacanciesApi.list(),
@@ -101,9 +106,9 @@ export default function PortfolioPage() {
         setCandidateName(sRes.data.session.candidate_name ?? null);
         setTranscriptTurns(tRes.data.turns);
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, [fetchPortfolio, sessionId]);
+  }, [fetchPortfolio, sessionId, reloadKey]);
 
   // Poll while generating portfolio
   usePolling(fetchPortfolio, 5000, generating);
@@ -353,6 +358,8 @@ export default function PortfolioPage() {
       }, 2000);
     }, 300);
   };
+
+  if (loadError) return <LoadError what="this portfolio" onRetry={() => setReloadKey((k) => k + 1)} />;
 
   if (loading) {
     return (

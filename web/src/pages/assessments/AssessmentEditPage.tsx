@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadError from "@/components/LoadError";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import CustomSkillModal from "@/components/assessment/CustomSkillModal";
@@ -35,6 +36,8 @@ export default function AssessmentEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [customModalOpen, setCustomModalOpen] = useState(false);
@@ -49,15 +52,17 @@ export default function AssessmentEditPage() {
   const { fields, append, remove, move } = useFieldArray({ control, name: "skills" });
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     assessmentsApi
       .get(Number(id))
       .then((res) => {
         const a = res.data.assessment;
         reset({ name: a.name, time_limit_min: a.time_limit_min, language: a.language ?? "en", skills: a.skills });
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, [id, reset]);
+  }, [id, reset, reloadKey]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -115,6 +120,8 @@ export default function AssessmentEditPage() {
       setSubmitting(false);
     }
   };
+
+  if (loadError) return <LoadError what="this assessment" onRetry={() => setReloadKey((k) => k + 1)} />;
 
   if (loading) {
     return (
