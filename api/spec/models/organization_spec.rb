@@ -23,6 +23,26 @@ RSpec.describe Organization, type: :model do
       expect(Organization.identify("real-corp")).to eq(real_org)
     end
 
+    describe "ambiguous identifiers" do
+      # org_a's *identifier* equals org_b's *scheme*: the same string matches both.
+      let!(:org_a) { create(:organization, name: "A", scheme: "a-scheme", identifier: "shared", host: "a.example.com") }
+      let!(:org_b) { create(:organization, name: "B", scheme: "shared", identifier: "b-ident", host: "b.example.com") }
+
+      it "resolves deterministically, preferring scheme over the other columns" do
+        results = Array.new(5) { Organization.identify("shared") }
+
+        expect(results).to all(eq(org_b))
+      end
+
+      it "still resolves by host when nothing matches on scheme or identifier" do
+        expect(Organization.identify("a.example.com")).to eq(org_a)
+      end
+
+      it "returns nil for an unknown identifier instead of some default" do
+        expect(Organization.identify("nope")).to be_nil
+      end
+    end
+
     it "still finds the real organization even if a decoy table exists in ai_interview schema" do
       ActiveRecord::Base.connection.execute("CREATE SCHEMA IF NOT EXISTS ai_interview")
       ActiveRecord::Base.connection.execute(<<~SQL)
