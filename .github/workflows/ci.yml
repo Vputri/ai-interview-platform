@@ -15,6 +15,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
+          # Ephemeral service container reachable only from this job; no password to leak.
           POSTGRES_HOST_AUTH_METHOD: trust
         ports: ["5432:5432"]
         options: >-
@@ -35,6 +36,8 @@ jobs:
           ruby-version: "3.3"
           bundler-cache: true
           working-directory: api
+      # Generated per run, never stored in the repo.
+      - run: echo "SECRET_KEY_BASE=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - run: bundle exec rails db:create db:schema:load
       - run: bundle exec rspec
 
