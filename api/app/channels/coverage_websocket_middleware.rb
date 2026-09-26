@@ -124,7 +124,7 @@ class CoverageWebSocketMiddleware
 
   def authenticate_assessor_by_token(token, session_id)
     # Same rules as the HTTP API: signed token, assessor/admin role, account not deactivated.
-    claims = JsonWebToken.decode(token)
+    claims = AuthorizeApiRequest.new({ 'Authorization' => "Bearer #{token}" }, %w[assessor]).call[:claims]
 
     org = Organization.find_by(scheme: claims[:scheme])
     return [nil, 'Invalid tenant'] unless org
