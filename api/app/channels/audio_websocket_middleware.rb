@@ -111,7 +111,6 @@ class AudioWebSocketMiddleware
     state.browser_disconnected_at = Time.current
     state.proactive_reconnect_timer&.cancel
     state.lock_timer&.cancel
-    state.connection_lock&.release
 
     # Keep Gemini alive during grace period in case candidate reconnects via page refresh.
     schedule_graceful_end(browser_ws, state)
