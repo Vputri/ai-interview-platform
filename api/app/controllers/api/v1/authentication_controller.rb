@@ -17,7 +17,7 @@ module Api
 
         return json_error('Invalid email or password', :unauthorized) unless user.role == 'admin' && user.active?
 
-        token = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: (Organization.first || current_organization).scheme })
+        token = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: current_organization.scheme })
 
         json_response({ token:, user: { id: user.id, email: user.email, role: user.role } })
       end
