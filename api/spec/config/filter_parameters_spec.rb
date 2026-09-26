@@ -19,4 +19,10 @@ RSpec.describe "Parameter log filtering" do
 
     expect(filtered.values).to all(eq("[FILTERED]"))
   end
+
+  it "does not over-redact unrelated keys that merely contain 'text'" do
+    filtered = filter.filter("context" => "keep", "textarea" => "keep")
+
+    expect(filtered.values).to all(eq("keep"))
+  end
 end
