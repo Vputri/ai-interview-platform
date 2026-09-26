@@ -225,7 +225,8 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* ── Demo credentials hint ── */}
+          {/* ── Demo credentials hint (local development only; never shipped to production) ── */}
+          {import.meta.env.DEV && (
           <button
             type="button"
             onClick={fillDemo}
@@ -239,6 +240,7 @@ export default function LoginPage() {
               admin@example.com&nbsp;&nbsp;/&nbsp;&nbsp;password
             </p>
           </button>
+          )}
         </CardContent>
       </Card>
     </div>
