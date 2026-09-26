@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2026_08_14_110000) do
+ActiveRecord::Schema[7.0].define(version: 2026_09_26_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -95,6 +95,8 @@ ActiveRecord::Schema[7.0].define(version: 2026_08_14_110000) do
     t.text "overall_narrative"
     t.datetime "generated_at", default: -> { "now()" }
     t.bigint "tenant_id", null: false
+    t.string "status", default: "complete", null: false
+    t.text "error"
     t.index ["portfolio_id", "vacancy_id"], name: "index_fit_gap_reports_on_portfolio_id_and_vacancy_id", unique: true
     t.index ["portfolio_id"], name: "index_fit_gap_reports_on_portfolio_id"
     t.index ["tenant_id"], name: "index_fit_gap_reports_on_tenant_id"
@@ -137,6 +139,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_08_14_110000) do
     t.datetime "generated_at"
     t.text "generation_error"
     t.bigint "tenant_id", null: false
+    t.datetime "generation_started_at"
     t.index ["candidate_id"], name: "index_portfolios_on_candidate_id"
     t.index ["session_id"], name: "index_portfolios_on_session_id", unique: true
     t.index ["tenant_id"], name: "index_portfolios_on_tenant_id"

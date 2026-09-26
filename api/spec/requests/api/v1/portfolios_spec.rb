@@ -39,6 +39,16 @@ RSpec.describe "Api::V1::Portfolios", type: :request do
       expect(response).to have_http_status(:accepted)
     end
 
+    it "re-queues instead of serving a failed placeholder as a cached report" do
+      create(:fit_gap_report, portfolio: own_portfolio, vacancy: own_vacancy, status: "failed", skill_comparisons: [])
+
+      post "/api/v1/portfolios/#{own_portfolio.id}/fitgap",
+           params: { vacancy_id: own_vacancy.id }, headers: headers
+
+      expect(response).to have_http_status(:accepted)
+      expect(FitGapGeneratorWorker.jobs.size).to eq(1)
+    end
+
     it "returns 404 for another tenant's portfolio instead of leaking it" do
       post "/api/v1/portfolios/#{other_portfolio.id}/fitgap",
            params: { vacancy_id: own_vacancy.id }, headers: headers

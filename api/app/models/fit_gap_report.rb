@@ -4,11 +4,15 @@ class FitGapReport < ApplicationRecord
   include TenantScoped
 
   FIT_RESULTS = %w[match gap exceed not_assessed].freeze
+  STATUSES    = %w[complete failed].freeze
 
   belongs_to :portfolio
   belongs_to :vacancy
 
   validates :skill_comparisons, presence: true, allow_blank: true
+  validates :status, inclusion: { in: STATUSES }
+
+  def failed? = status == "failed"
 
   private
 
