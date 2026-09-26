@@ -66,3 +66,27 @@ A dipilih: state sudah ada di DB, `with_lock` cukup, dan gak nambah dependency.
 - `POST /auth/login` fallback ke `SELECT scheme FROM organizations LIMIT 1` kalau header `X-Tenant-Scheme` kosong → admin bisa dapat token tenant sembarang. Perlu keputusan produk (wajib header? resolve dari host?), belum diubah.
 - `assessments#create` mengembalikan `system_prompt_generated: true` padahal baru di-enqueue.
 - Kebijakan retensi/hapus data kandidat (UU PDP) masih belum ada; butuh keputusan hukum + produk, bukan cuma endpoint.
+
+## Audit keamanan lanjutan (api)
+
+**Ditutup di PR ini (tiap item punya test merah lalu hijau + seeded fault):**
+
+| Sev | Temuan | Perbaikan |
+|---|---|---|
+| P0 | Login fallback ke `organizations LIMIT 1`/`test-corp` → token tenant sembarang untuk admin global | pakai tenant dari middleware, 403 kalau tidak resolve (`scratch/seeded-fault-login-tenant-fallback`) |
+| P0 | WebSocket coverage & audio menerima JWT valid **role apa pun** dan **akun nonaktif** | lewat `AuthorizeApiRequest` seperti HTTP (`...ws-skips-role-check`) |
+| P1 | Audio WS mengabaikan expiry invite (bypass fix P1-4) | tolak invite kedaluwarsa |
+| P1 | `audio_complete` bisa menutup sesi yang belum mulai lewat invite link | wajib `active?`, else 409 (`...audio-complete-pending`) |
+| P2 | Token tanpa `exp` diterima selamanya | `required_claims: ['exp']` (`...jwt-no-exp-required`) |
+| P2 | Pesan exception JWT/WS dikirim ke client | pesan generik, detail hanya class di log |
+
+**Sudah aman (dicek, tidak diubah):** mass-assignment ketat (`permit` tanpa `tenant_id`), API key Gemini di header bukan URL, tidak ada secret di `k8s/`, HS256 dipaksa (alg=none ditolak, ada test), IDOR portfolio (ditutup di dev), tenant isolation vacancies/assessments/sessions (test), response login generik (tidak enumerasi akun).
+
+**Belum diubah — perlu keputusan (eskalasi):**
+1. Admin lokal ada di tabel `users` **global** (tanpa tenant): admin mana pun bisa minta token tenant lain lewat `X-Tenant-Scheme`. Perlu `users.organization_id` atau login per-tenant.
+2. Revocation untuk role `assessor` (token dari rakamin-api) masih bolong; butuh mekanisme lintas app.
+3. Rate limit login hanya per-IP (5/menit): tidak ada throttle per-akun, dan di belakang proxy `req.ip` bergantung konfigurasi trusted proxy.
+4. `Organization.identify` mencocokkan `identifier/name/scheme/host` sekaligus → input ambigu bisa resolve ke org yang salah. Sebaiknya kunci ke satu field.
+5. Invite token dikirim lewat query string WS (`?token=`) → masuk access log proxy.
+6. Env `staging` mengembalikan `e.message` mentah di JSON error (hanya `production` yang disamarkan).
+7. Belum ada `brakeman`/`bundler-audit` di Gemfile; tambahkan ke CI.
