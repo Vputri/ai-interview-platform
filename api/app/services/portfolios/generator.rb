@@ -56,6 +56,7 @@ module Portfolios
     # another worker is actively generating it.
     def claim(portfolio)
       portfolio.with_lock do
+        return false if portfolio.complete?
         return false if portfolio.generating? && portfolio.generation_started_at&.>(STALE_AFTER.ago)
 
         portfolio.update!(generation_status: 'generating', generation_started_at: Time.current)
