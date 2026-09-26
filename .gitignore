@@ -19,3 +19,8 @@ web/.vite/
 .DS_Store
 **/._*
 **/spec/examples.txt
+
+# AI-agent tooling state (never commit)
+**/.claude-flow/
+**/.swarm/
+**/ruvector.db*
