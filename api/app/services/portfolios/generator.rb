@@ -13,24 +13,37 @@ module Portfolios
       )
     end
 
+    # A job that started less than this long ago is assumed to still be running.
+    STALE_AFTER = 10.minutes
+
     # Returns the Portfolio record with skills populated.
+    #
+    # Safe against duplicate jobs (end handler + regenerate can both enqueue):
+    # a complete portfolio, or one another worker started recently, is returned
+    # untouched. A model or save failure is re-raised so Sidekiq retries; once
+    # retries run out PortfolioGeneratorWorker marks the portfolio `failed`.
+    # Never records an empty portfolio as `complete`.
     def call
       portfolio = @session.portfolio || @session.create_portfolio!(
         candidate_id:      @session.candidate_id,
         generation_status: 'pending'
       )
 
-      portfolio.update!(generation_status: 'generating')
+      return portfolio unless claim(portfolio)
 
       begin
-        prompt   = build_prompt
-        response = @gemini_client.generate_content(prompt, temperature: 0.2)
-        save_skills(portfolio, response)
-        portfolio.update!(generation_status: 'complete', generated_at: Time.current, generation_error: nil)
+        response = @gemini_client.generate_content(build_prompt, temperature: 0.2)
+
+        # One transaction: a failure part-way never leaves a wiped or half-written portfolio.
+        ActiveRecord::Base.transaction do
+          save_skills(portfolio, response)
+          portfolio.update!(generation_status: 'complete', generated_at: Time.current, generation_error: nil)
+        end
       rescue => e
-        Rails.logger.warn("[N10] Gemini call failed for session #{@session.id} (#{e.class}: #{e.message}) — populating fallback portfolio")
-        save_skills(portfolio, { 'configured_skills' => [], 'discovered_skills' => [] })
-        portfolio.update!(generation_status: 'complete', generated_at: Time.current, generation_error: "Catatan: #{e.message}")
+        Rails.logger.warn("[N10] Generation failed for session #{@session.id} (#{e.class})")
+        # e.message can echo request details from the model API, so only the class is stored.
+        portfolio.update!(generation_status: 'pending', generation_error: "Generation failed (#{e.class.name})")
+        raise
       end
 
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
@@ -38,6 +51,18 @@ module Portfolios
     end
 
     private
+
+    # Atomically takes the job. False when the portfolio is already done or
+    # another worker is actively generating it.
+    def claim(portfolio)
+      portfolio.with_lock do
+        return false if portfolio.complete?
+        return false if portfolio.generating? && portfolio.generation_started_at&.>(STALE_AFTER.ago)
+
+        portfolio.update!(generation_status: 'generating', generation_started_at: Time.current)
+      end
+      true
+    end
 
     def build_prompt
       assessment       = @session.assessment

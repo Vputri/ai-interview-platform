@@ -144,4 +144,71 @@ RSpec.describe Portfolios::Generator do
     expect(react.status).to eq("assessed")
     expect(react.ai_level).to eq(4)
   end
+
+  describe "failure and duplicate-job handling" do
+    let(:failing_client) do
+      instance_double(Gemini::HttpClient).tap do |c|
+        allow(c).to receive(:generate_content).and_raise(StandardError, "boom key=SECRET123")
+      end
+    end
+
+    it "re-raises a model failure so Sidekiq retries, instead of saving an all-not_assessed portfolio as complete" do
+      portfolio = create(:portfolio, session: session, generation_status: "pending")
+
+      expect { described_class.new(session: session, gemini_client: failing_client).call }.to raise_error(StandardError)
+
+      portfolio.reload
+      expect(portfolio.generation_status).to eq("pending")
+      expect(portfolio.portfolio_skills).to be_empty
+    end
+
+    it "does not persist the raw model error message (may echo request details)" do
+      portfolio = create(:portfolio, session: session, generation_status: "pending")
+
+      begin
+        described_class.new(session: session, gemini_client: failing_client).call
+      rescue StandardError
+        nil
+      end
+
+      expect(portfolio.reload.generation_error.to_s).not_to include("SECRET123")
+    end
+
+    it "keeps existing skill scores when regeneration fails part-way through saving" do
+      portfolio = create(:portfolio, session: session, generation_status: "pending")
+      keep = create(:portfolio_skill, portfolio: portfolio, skill_label: "React", ai_level: 4)
+      bad = { "configured_skills" => [], "discovered_skills" => [{ "skill_label" => nil, "level" => 2 }] }
+
+      expect { generate(bad) }.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(PortfolioSkill.exists?(keep.id)).to be(true)
+      expect(portfolio.reload.generation_status).to eq("pending")
+    end
+
+    it "skips a duplicate job when the portfolio is already complete" do
+      create(:portfolio, session: session, generation_status: "complete")
+      client = fake_client({ "configured_skills" => [], "discovered_skills" => [] })
+
+      described_class.new(session: session, gemini_client: client).call
+
+      expect(client).not_to have_received(:generate_content)
+    end
+
+    it "skips a duplicate job while another worker is actively generating" do
+      create(:portfolio, session: session, generation_status: "generating", generation_started_at: 1.minute.ago)
+      client = fake_client({ "configured_skills" => [], "discovered_skills" => [] })
+
+      described_class.new(session: session, gemini_client: client).call
+
+      expect(client).not_to have_received(:generate_content)
+    end
+
+    it "takes over a stale 'generating' portfolio left behind by a crashed worker" do
+      create(:portfolio, session: session, generation_status: "generating", generation_started_at: 1.hour.ago)
+
+      portfolio = generate({ "configured_skills" => [], "discovered_skills" => [] })
+
+      expect(portfolio.generation_status).to eq("complete")
+    end
+  end
 end
