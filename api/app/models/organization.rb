@@ -32,7 +32,7 @@ class Organization < ApplicationRecord
     SQL
 
     where(sql_string, identifier, Array(identifier))
-      .order(Arel.sql(sanitize_sql_array([priority, identifier, identifier, identifier, Array(identifier)])))
+      .order(Arel.sql('id DESC'))
       .first || default_organization
   end
 
