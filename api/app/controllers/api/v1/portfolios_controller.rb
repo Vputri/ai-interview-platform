@@ -115,7 +115,7 @@ module Api
 
         # Return cached report if it exists and portfolio has no new overrides
         existing = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
-        if existing && !existing.failed?
+        if existing
           return json_response(report: fit_gap_json(existing))
         end
 
