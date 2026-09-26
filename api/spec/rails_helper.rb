@@ -26,5 +26,9 @@ RSpec.configure do |config|
 
   # Jobs are enqueued in-memory so specs never need a live Redis.
   Sidekiq::Testing.fake!
+
+  # Throttling is exercised explicitly in spec/config/rack_attack_spec.rb; elsewhere it would
+  # make unrelated specs share a per-IP budget.
+  Rack::Attack.enabled = false
   config.before { Sidekiq::Worker.clear_all }
 end
