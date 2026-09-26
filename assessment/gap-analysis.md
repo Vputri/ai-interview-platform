@@ -181,3 +181,23 @@ di luar 4 sub-PR P0, dibuka belakangan setelah ditest) — cuma dicatet di
 sini sebagai polish, bukan gap severity, dan didokumentasiin ringan di
 [revamp-strategy.md](revamp-strategy.md) tanpa AC/trade-off selengkap
 sub-PR P0.
+
+---
+
+## Status update — branch `feat/be-hardening` (backend-leaning submission)
+
+Item yang di atas ditulis sebelum branch ini. Status terbaru (detail & bukti di
+[be-hardening.md](be-hardening.md)):
+
+| Item | Status |
+|---|---|
+| P2-1 transcript kandidat di log | Sudah tidak ada: log `live_client` hanya mencatat panjang buffer, bukan isi ucapan (dicek ulang). |
+| P2-2 tanpa `filter_parameter_logging` | **Ditutup** (initializer + spec). |
+| P2-3 `.catch(() => {})` diam-diam | **Sebagian ditutup**: halaman Vacancy/Assessment edit dan Portfolio kini menampilkan error + retry. Sisa 2 (autocomplete taksonomi di list page) sengaja dibiarkan: degradasi aman, cuma saran skill. |
+| P2-4 worker tanpa `retries_exhausted` | **Ditutup** (FitGap + SystemPrompt, status `failed` untuk fit/gap). |
+| P2-5 tanpa timeout Axios | **Ditutup** (60 detik + test). |
+| P2-7 tanpa CI / test | **Ditutup**: GitHub Actions (rspec, tsc, vitest, brakeman, bundler-audit); 160 spec RSpec + vitest. |
+| P3-1 `audio_start_ms/end_ms` selalu nil | Masih terbuka (kolom tak dipakai FE). |
+| P3-2 `SignupPage` dead code | Masih terbuka. |
+| P3-3 seeds interpolasi string | Masih terbuka; seeds kini menolak jalan di production. |
+| Constraint signal 1 (zero test + CI) | Sebagian: harness + CI ada; `audio_websocket_middleware` (800+ baris) masih belum punya test perilaku end-to-end. |

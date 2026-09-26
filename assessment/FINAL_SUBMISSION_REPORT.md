@@ -1,3 +1,7 @@
+> **Catatan:** dokumen ini adalah laporan submission *sebelumnya* (Frontend-depth, Option B dengan 10 sub-PR).
+> Untuk submission Backend-leaning (Option A, satu PR dari `feat/be-hardening`), acuan terbaru adalah
+> [be-hardening.md](be-hardening.md). Link PR, video, dan klaim kedalaman di bawah **bukan** untuk submission ini.
+
 # Comprehensive Engineering & Product Revamp Report
 ## AI Interview Platform — Monozukuri Technical Submission
 

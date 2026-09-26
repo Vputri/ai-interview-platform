@@ -11,6 +11,10 @@
 #   > token = JsonWebToken.encode({ user_id: 1, role: 'admin', scheme: 'test-corp' })
 #   > puts token
 
+# Seeds create a known admin (admin@example.com / password) and a demo tenant. Never run them
+# against a production database.
+abort "Refusing to seed development data in production." if Rails.env.production?
+
 puts "== Seeding AI Interview development data =="
 
 # ── Organization ─────────────────────────────────────────────────────────────
