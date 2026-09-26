@@ -9,7 +9,7 @@ RSpec.describe "Account revocation", type: :request do
   let(:organization) { create(:organization) }
 
   it "allows a request from an active admin" do
-    admin = create(:user, role: "admin", active: true)
+    admin = create(:user, role: "admin", active: true, organization_id: organization.id)
     headers = auth_headers(organization: organization, role: "admin", user_id: admin.id)
 
     get "/api/v1/assessments", headers: headers
@@ -18,7 +18,7 @@ RSpec.describe "Account revocation", type: :request do
   end
 
   it "rejects a deactivated admin even with a correctly-signed, unexpired token" do
-    admin = create(:user, role: "admin", active: false)
+    admin = create(:user, role: "admin", active: false, organization_id: organization.id)
     headers = auth_headers(organization: organization, role: "admin", user_id: admin.id)
 
     get "/api/v1/assessments", headers: headers
@@ -38,5 +38,24 @@ RSpec.describe "Account revocation", type: :request do
     get "/api/v1/assessments", headers: headers
 
     expect(response).to have_http_status(:ok)
+  end
+
+  it "rejects an admin's token when it names a tenant the admin does not belong to" do
+    other_org = create(:organization)
+    admin = create(:user, role: "admin", active: true, organization_id: other_org.id)
+    headers = auth_headers(organization: organization, role: "admin", user_id: admin.id)
+
+    get "/api/v1/assessments", headers: headers
+
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "rejects an admin that is not bound to any tenant" do
+    admin = create(:user, role: "admin", active: true, organization_id: nil)
+    headers = auth_headers(organization: organization, role: "admin", user_id: admin.id)
+
+    get "/api/v1/assessments", headers: headers
+
+    expect(response).to have_http_status(:forbidden)
   end
 end

@@ -30,7 +30,15 @@ RSpec.describe "WebSocket authentication" do
     end
 
     it "rejects a deactivated admin even with a valid signed token" do
-      admin = create(:user, role: "admin", active: false)
+      admin = create(:user, role: "admin", active: false, organization_id: organization.id)
+
+      _found, error = authenticate.call(token_for(role: "admin", user_id: admin.id))
+
+      expect(error).to be_present
+    end
+
+    it "rejects an admin bound to a different tenant than the token claims" do
+      admin = create(:user, role: "admin", active: true, organization_id: other_org.id)
 
       _found, error = authenticate.call(token_for(role: "admin", user_id: admin.id))
 

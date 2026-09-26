@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe "Api::V1::Authentication", type: :request do
   let(:organization) { create(:organization) }
   let(:tenant_header) { { "X-Tenant-Scheme" => organization.scheme } }
-  let!(:admin) { create(:user, email: "admin@example.com", password: "password123", role: "admin") }
+  let!(:admin) { create(:user, email: "admin@example.com", password: "password123", role: "admin", organization_id: organization.id) }
 
   def login(email, password)
     post "/api/v1/auth/login", params: { email: email, password: password }, headers: tenant_header
@@ -92,6 +92,36 @@ RSpec.describe "Api::V1::Authentication", type: :request do
                                  headers: { "Referer" => "https://#{organization.host}/login" }
 
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "tenant-bound admins" do
+    let(:other_org) { create(:organization) }
+
+    it "does not let an admin of another tenant log in under this tenant" do
+      admin.update!(organization_id: other_org.id)
+
+      login("admin@example.com", "password123")
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.body).not_to include("token")
+    end
+
+    it "fails closed for a legacy admin that is not bound to any tenant" do
+      admin.update!(organization_id: nil)
+
+      login("admin@example.com", "password123")
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "gives the same generic error whether the tenant or the password is wrong" do
+      admin.update!(organization_id: other_org.id)
+      login("admin@example.com", "password123")
+      wrong_tenant = response.body
+      login("admin@example.com", "nope")
+
+      expect(response.body).to eq(wrong_tenant)
     end
   end
 end

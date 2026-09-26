@@ -42,8 +42,11 @@ class AuthorizeApiRequest
   def account_active?(user)
     return true unless user.role == 'admin'
 
-    Rails.cache.fetch("auth/user_active/#{user.id}", expires_in: 60.seconds) do
-      User.where(id: user.id, active: true).exists?
+    # Also bound to the tenant the token names: a token minted for tenant B
+    # must not work for an admin that belongs to tenant A (or to none).
+    Rails.cache.fetch("auth/user_active/#{user.id}/#{user.scheme}", expires_in: 60.seconds) do
+      org_id = Organization.identify(user.scheme)&.id
+      org_id.present? && User.where(id: user.id, active: true, organization_id: org_id).exists?
     end
   end
 
