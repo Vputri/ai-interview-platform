@@ -14,7 +14,7 @@ import LevelRadio from "@/components/assessment/LevelRadio";
 import LevelBadge from "./LevelBadge";
 import { portfoliosApi } from "@/services/portfolios";
 import { Loader2, Pencil, SlidersHorizontal, UserCheck, Sparkles, Check } from "lucide-react";
-import { parseLevel, LEVEL_LABELS } from "@/utils/constants";
+import { parseLevel, LEVEL_LABELS, MAX_ASSESSOR_NOTES } from "@/utils/constants";
 import type { PortfolioSkill, AssessorOverride } from "@/types";
 
 interface OverridePanelProps {
@@ -33,6 +33,7 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
   const [saveError, setSaveError] = useState(false);
 
   const hasOverride = !!existingOverride;
+  const notesTooLong = notes.length > MAX_ASSESSOR_NOTES;
 
   const handleOpen = () => {
     setOverrideLevel(existingOverride?.override_level ?? parseLevel(skill.ai_level) ?? 1);
@@ -136,13 +137,24 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
                 id={`notes-${skill.id}`}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                maxLength={MAX_ASSESSOR_NOTES}
                 rows={3}
                 placeholder="Contoh: Kandidat menjelaskan teknik arsitektur modular pada menit ke-10 dengan sangat baik..."
                 className="text-xs rounded-xl border-slate-200 focus:ring-primary focus:border-primary resize-none"
               />
-              <p className="text-[11px] text-muted-foreground">
-                Catatan ini akan dicatat dalam riwayat audit dan tercetak pada laporan PDF resmi.
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Catatan ini akan dicatat dalam riwayat audit dan tercetak pada laporan PDF resmi.
+                </p>
+                <span className={`text-[11px] tabular-nums shrink-0 ${notesTooLong ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                  {notes.length} / {MAX_ASSESSOR_NOTES}
+                </span>
+              </div>
+              {notesTooLong && (
+                <p role="alert" className="text-xs font-semibold text-destructive">
+                  Catatan terlalu panjang. Persingkat hingga maksimal {MAX_ASSESSOR_NOTES} karakter.
+                </p>
+              )}
             </div>
 
             {saveError && (
@@ -166,7 +178,7 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
               type="button"
               size="sm"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || notesTooLong}
               className="rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs"
             >
               {saving ? (

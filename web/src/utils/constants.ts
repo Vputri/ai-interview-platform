@@ -77,3 +77,6 @@ export const FIT_GAP_RESULT_CLASSES: Record<string, string> = {
   exceed: "text-green-700 bg-green-50",
   not_assessed: "text-neutral-500 bg-neutral-50",
 };
+
+/** Must match AssessorOverride's `assessor_notes` length validation in the API. */
+export const MAX_ASSESSOR_NOTES = 2000;
