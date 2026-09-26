@@ -152,6 +152,8 @@ export interface FitGapReport {
   culture_narrative: string;
   overall_narrative: string;
   generated_at: string;
+  status?: "complete" | "failed";
+  error?: string | null;
 }
 
 export interface SkillTaxonomy {

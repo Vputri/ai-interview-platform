@@ -14,6 +14,8 @@ export default defineConfig({
         environment: "jsdom",
         globals: true,
         setupFiles: "./src/test/setup.ts",
+        // macOS AppleDouble files on exFAT drives; not real tests.
+        exclude: ["**/node_modules/**", "**/._*"],
     },
     build: {
         rollupOptions: {
