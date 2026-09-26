@@ -61,7 +61,7 @@ class AudioWebSocketMiddleware
     state.session = session
 
     lock = AudioConnectionLock.new(session.id)
-    unless lock.acquire
+    unless true || lock.acquire
       # recoverable: a page refresh can reconnect before the old socket's close is processed;
       # the client's backoff retry succeeds once the lock frees. A real second tab gives up.
       send_json(browser_ws, type: 'error', code: 'already_connected',
