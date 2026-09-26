@@ -59,6 +59,19 @@ class AudioWebSocketMiddleware
     end
 
     state.session = session
+
+    lock = AudioConnectionLock.new(session.id)
+    unless lock.acquire
+      # recoverable: a page refresh can reconnect before the old socket's close is processed;
+      # the client's backoff retry succeeds once the lock frees. A real second tab gives up.
+      send_json(browser_ws, type: 'error', code: 'already_connected',
+                            message: 'This interview is already open in another tab or window.', recoverable: true)
+      browser_ws.close
+      return
+    end
+    state.connection_lock = lock
+    state.lock_timer = EM.add_periodic_timer(AudioConnectionLock::RENEW_EVERY) { lock.renew }
+
     connect_to_gemini(browser_ws, state)
   rescue StandardError => e
     Rails.logger.error("[AudioWS] Exception in on:open: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
@@ -97,6 +110,8 @@ class AudioWebSocketMiddleware
     Rails.logger.info("[AudioWS] Browser disconnected: session=#{session_id} code=#{event.code}")
     state.browser_disconnected_at = Time.current
     state.proactive_reconnect_timer&.cancel
+    state.lock_timer&.cancel
+    state.connection_lock&.release
 
     # Keep Gemini alive during grace period in case candidate reconnects via page refresh.
     schedule_graceful_end(browser_ws, state)
@@ -794,7 +809,8 @@ class AudioWebSocketMiddleware
                   :graceful_end_timer, :time_ceiling_timer,
                   :coverage_end_timer, :coverage_pending,
                   :last_ai_turn_ends_with_question, :wrap_up_injected,
-                  :waiting_for_candidate_response
+                  :waiting_for_candidate_response,
+                  :connection_lock, :lock_timer
 
     def initialize
       @turn_counter = 0
