@@ -32,7 +32,7 @@ export default function FitGapReportPage() {
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
       // A job that ran out of retries is stored as a terminal "failed" report.
-      const isFailed = false;
+      const isFailed = res.data.report.status === "failed";
       setReport(isFailed ? null : res.data.report);
       setFailed(isFailed);
       setGenerating(false);
