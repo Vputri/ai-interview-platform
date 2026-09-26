@@ -42,7 +42,7 @@ A dipilih: state sudah ada di DB, `with_lock` cukup, dan gak nambah dependency.
 
 ## Bukti (Monozukuri)
 
-- RSpec: 69 → 119 contoh (0 gagal), jalan **tanpa `application.yml` dan tanpa Redis** (disimulasikan, lihat CI env).
+- RSpec: 69 → 160 contoh (0 gagal), jalan **tanpa `application.yml` dan tanpa Redis** (disimulasikan, lihat CI env).
 - CI baru: `.github/workflows/ci.yml` (rspec + `tsc` + vitest).
 - Seeded fault — tiap fix dirusak di scratch branch, test gagal, lalu di-revert (history terlihat):
 
@@ -82,11 +82,23 @@ A dipilih: state sudah ada di DB, `with_lock` cukup, dan gak nambah dependency.
 
 **Sudah aman (dicek, tidak diubah):** mass-assignment ketat (`permit` tanpa `tenant_id`), API key Gemini di header bukan URL, tidak ada secret di `k8s/`, HS256 dipaksa (alg=none ditolak, ada test), IDOR portfolio (ditutup di dev), tenant isolation vacancies/assessments/sessions (test), response login generik (tidak enumerasi akun).
 
-**Belum diubah — perlu keputusan (eskalasi):**
-1. Admin lokal ada di tabel `users` **global** (tanpa tenant): admin mana pun bisa minta token tenant lain lewat `X-Tenant-Scheme`. Perlu `users.organization_id` atau login per-tenant.
-2. Revocation untuk role `assessor` (token dari rakamin-api) masih bolong; butuh mekanisme lintas app.
-3. Rate limit login hanya per-IP (5/menit): tidak ada throttle per-akun, dan di belakang proxy `req.ip` bergantung konfigurasi trusted proxy.
-4. `Organization.identify` mencocokkan `identifier/name/scheme/host` sekaligus → input ambigu bisa resolve ke org yang salah. Sebaiknya kunci ke satu field.
-5. Invite token dikirim lewat query string WS (`?token=`) → masuk access log proxy.
-6. Env `staging` mengembalikan `e.message` mentah di JSON error (hanya `production` yang disamarkan).
-7. Belum ada `brakeman`/`bundler-audit` di Gemfile; tambahkan ke CI.
+**Putaran audit ke-2 (juga ditutup, semua dengan test merah lalu hijau):**
+
+| Sev | Temuan | Perbaikan |
+|---|---|---|
+| P0 | Admin di tabel `users` global: admin mana pun bisa minta token tenant lain via `X-Tenant-Scheme` | `users.organization_id`; login, HTTP, dan kedua WS mensyaratkan admin milik tenant itu. Migration reversible, backfill hanya bila tepat 1 organisasi, selain itu fail closed (`...login-ignores-admin-tenant`, `...token-ignores-admin-tenant`) |
+| P0 | Dependency rentan: puma 5.6.9, rack 2.2.22, websocket-driver 0.8.0 (DoS di WS), jwt, nokogiri, faraday, addressable (advisory High) | update ke versi ter-patch, puma 7.2 (boot 2 worker diverifikasi); `json` dipin 2.x karena 3.x merusak Rails 7.0 |
+| P1 | `Organization.identify` mencocokkan 4 kolom dengan `.first` tanpa urutan (tenant bisa berubah antar-panggilan) | prioritas tetap scheme > identifier > host > alias; test gagal untuk `id ASC` maupun `id DESC` (`...org-identify-unordered`) |
+| P1 | Rate limit login hanya per-IP | tambah 10 percobaan / 15 menit per akun, baca email dari body JSON (`...login-email-throttle-off`) |
+| P2 | WebSocket tanpa `max_length` (default 64 MB per pesan) | audio 1 MB, coverage 16 KB |
+| P2 | `assessor_notes` tanpa batas panjang | maks 2000 karakter |
+| P2 | Container jalan sebagai root; hook `on_worker_boot` deprecated di Puma 7 | user non-root, `before_worker_boot` |
+| CI | Tidak ada scan otomatis | job `security`: brakeman (0 warning) + bundler-audit (bersih) |
+
+**Belum diubah — perlu keputusan / kerja lintas tim (eskalasi):**
+1. **Rails 7.0 EOL** (sejak 2025-04): 12 advisory activestorage/activesupport/activerecord/actionview hanya hilang dengan upgrade ke 7.2+. Diterima sementara di `api/.bundler-audit.yml` dengan alasan; advisory baru tetap menggagalkan CI.
+2. Revocation role `assessor` (token dari rakamin-api) masih bolong: tidak ada data lokal untuk dicek, butuh webhook/cache bersama dari app saudara.
+3. Invite token kandidat dikirim lewat query string WS (`?token=`) → masuk access log proxy. Solusi yang benar: kirim sebagai pesan `auth` pertama (seperti coverage WS); mengubah protokol FE+BE, jadi dijadwalkan terpisah dengan test WS end-to-end.
+4. Upgrade jwt 3.x dan Ruby image `3.3.2` (Dockerfile) belum diuji di luar suite; verifikasi di staging.
+5. Env `staging` masih mengembalikan `e.message` mentah pada error 500 (hanya `production` yang disamarkan).
+6. Tombol/form catatan override di FE belum membatasi 2000 karakter (server sudah menolak dengan 422).
