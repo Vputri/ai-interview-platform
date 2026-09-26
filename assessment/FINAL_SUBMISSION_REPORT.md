@@ -1,349 +1,283 @@
-> **Catatan:** dokumen ini adalah laporan submission *sebelumnya* (Frontend-depth, Option B dengan 10 sub-PR).
-> Untuk submission Backend-leaning (Option A, satu PR dari `feat/be-hardening`), acuan terbaru adalah
-> [be-hardening.md](be-hardening.md). Link PR, video, dan klaim kedalaman di bawah **bukan** untuk submission ini.
-
-# Comprehensive Engineering & Product Revamp Report
-## AI Interview Platform — Monozukuri Technical Submission
-
 ---
-
-### 📌 Metadata & Quick Reference
-
-- **Candidate Name**: Vika Putri Ariyanti
-- **Submission Date**: 15 Agustus 2026
-- **Repository Target**: `https://github.com/rakamindev/ai-interview-platform`
-- **Candidate Fork**: `https://github.com/Vputri/ai-interview-platform`
-- **Video Walkthrough Demonstration**: [https://www.loom.com/share/7793f2168932440384525a5d923dff7c](https://www.loom.com/share/7793f2168932440384525a5d923dff7c)
-- **Primary Flagship Pull Request**: [Pull Request #15 (AI Multimodal Voice, Unified Evaluation Hub & Indonesian Localization)](https://github.com/rakamindev/ai-interview-platform/pull/15)
-
-#### 🔗 Complete Pull Request Matrix (10 Cohesive Sub-PRs)
-
-| Sub-PR | Scope & Severity Addressed | Pull Request Link | Status |
-|---|---|---|---|
-| **PR #6** | Tenant Isolation Hardening (P0-1, P0-2) | [PR #6](https://github.com/rakamindev/ai-interview-platform/pull/6) | ✅ Merged / Open |
-| **PR #7** | Not-Assessed & Unparseable Skill States (P0-4) | [PR #7](https://github.com/rakamindev/ai-interview-platform/pull/7) | ✅ Merged / Open |
-| **PR #8** | Candidate-Facing Error State Machine (P0-3) | [PR #8](https://github.com/rakamindev/ai-interview-platform/pull/8) | ✅ Merged / Open |
-| **PR #9** | Internalized Hardware Check Reliability (P0-5) | [PR #9](https://github.com/rakamindev/ai-interview-platform/pull/9) | ✅ Merged / Open |
-| **PR #10** | Auth & Session Hardening (P1-4, P1-5, P1-6) | [PR #10](https://github.com/rakamindev/ai-interview-platform/pull/10) | ✅ Merged / Open |
-| **PR #11** | Candidate Invite Link Frontend Origin Fix (P0-6) | [PR #11](https://github.com/rakamindev/ai-interview-platform/pull/11) | ✅ Merged / Open |
-| **PR #12** | UI/UX Polish Across Assessor Screens (P2-8) | [PR #12](https://github.com/rakamindev/ai-interview-platform/pull/12) | ✅ Merged / Open |
-| **PR #13** | Schema Qualification & Candidate Identity | [PR #13](https://github.com/rakamindev/ai-interview-platform/pull/13) | ✅ Merged / Open |
-| **PR #14** | Global Candidates Pool & Mobile UX Revamp | [PR #14](https://github.com/rakamindev/ai-interview-platform/pull/14) | ✅ Merged / Open |
-| **PR #15** | **AI Multimodal Live Voice, Unified Hub & Localization (P0-7, P0-8, P1-7, P1-8)** | [PR #15](https://github.com/rakamindev/ai-interview-platform/pull/15) | ⭐ **Flagship PR** |
-
+title: Comprehensive Engineering & Product Revamp Report
+subtitle: Next-Generation AI Interview & Skill Assessment Platform — Backend-leaning Submission
+kandidat: Vika Putri Ariyanti
+tanggal: 26 September 2026
+repo: https://github.com/rakamindev/ai-interview-platform
+fork: https://github.com/Vputri/ai-interview-platform
+pr: https://github.com/rakamindev/ai-interview-platform/pull/141
+pr_label: Pull Request #141 — satu PR (Option A), branch feat/be-hardening
+video: https://www.loom.com/share/7793f2168932440384525a5d923dff7c
+depth: Backend-heavy dengan seam frontend
 ---
+## 1. Pull Request & Ringkasan Eksekutif
 
-## 1. Executive Summary & Product Context
+Produk ini menggantikan penilaian interviewer teknis manusia dengan AI dalam skala besar. Artinya, kesalahan di pipeline bukan sekadar bug tampilan: skor yang salah adalah **keputusan hiring** yang salah, dan kandidat yang dinilai tidak pernah memilih sistem ini.
 
-### 🏢 What This Product Is
-Platform **AI Interview & Skill Assessment** adalah sistem wawancara suara real-time berbasis AI yang mengukur kapabilitas teknis dan soft skill kandidat secara adaptif (*probing*). Berbeda dari sekadar alat transkripsi pasif atau rekaman video asinkron biasa, platform ini:
-1. **Melakukan Wawancara Adaptif Real-time**: Menggunakan Gemini Live Multimodal WebSocket (`16kHz PCM streaming`) untuk melakukan penggalian kompetensi (*probing*), bukan membacakan daftar pertanyaan statis.
-2. **Memantau Cakupan Skill Dinamis (*Coverage Map*)**: Secara otomatis melacak status setiap skill (`not_yet` ➔ `initiated` ➔ `partial` ➔ `covered`) dan mendeteksi skill tak terduga (*discovered skills*).
-3. **Menghasilkan Portofolio Kompetensi yang Dapat Diaudit**: Menerbitkan skor L1–L5 per skill, tingkat keyakinan (*confidence level*), kutipan bukti (*evidence quotes*), dan narasi kecocokan lowongan (*Fit/Gap Benchmark*).
+Audit saya menemukan satu pola: **sistem gagal secara diam-diam**. Kegagalan model AI disimpan sebagai portfolio `complete` yang kosong, job fit/gap yang habis retry membuat UI menunggu selamanya, admin yang sudah dinonaktifkan masih bisa login, dan WebSocket melewati pemeriksaan role yang berlaku di HTTP. Tidak ada CI dan tidak ada test yang menangkapnya.
 
-### 🇮🇩 Lanskap Industri Rekrutmen Indonesia
-Volume pelamar kerja yang sangat masif (ribuan pelamar per lowongan di segmen bootcamp, fresh graduate, sales, dan BPO) menjadi bottleneck utama bagi recruiter Indonesia. Platform ini hadir di ujung atas *recruitment funnel* (triase screening) untuk menyaring kandidat secara adil, cepat, dan objektif.
+Perubahan ini membuat kegagalan **eksplisit dan bisa dipulihkan**, menutup celah autentikasi dan tenant, dan memasang harness test yang berjalan di CI.
 
-Nilai jual tertinggi platform ini bukanlah sekadar "AI yang bisa bertanya", melainkan **kemampuan untuk diaudit (*Auditability & Accountability*)**. Di Indonesia, keputusan rekrutmen rentan sengketa ketenagakerjaan jika tidak disertai bukti konkret. Oleh karena itu, bukti kutipan ucapan (*evidence quotes*) dan transparansi jejak audit assessor adalah pilar utama kepercayaan produk.
-
-### ⚖️ Implikasi Kepatuhan Hukum: UU PDP 2022 (Undang-Undang Perlindungan Data Pribadi)
-Sistem ini memproses rekaman suara mentah, transkrip percakapan utuh, dan profil kandidat yang memuat data pribadi sensitif. Berdasarkan UU PDP No. 27 Tahun 2022:
-- **Isolasi Data Antar-Tenant (Multi-Tenancy Hardening)**: Kebocoran data kandidat ke perusahaan lain (*Cross-Tenant Data Leak*) merupakan pelanggaran hukum berat. Kami menerapkan *Tenant Scoping* berlapis pada level ORM PostgreSQL.
-- **Minimalisasi Data pada Log (Zero PII Leak)**: Data suara biner base64, teks ucapan mentah, dan token JWT dilarang keras masuk ke dalam log aplikasi atau log Sidekiq.
-- **Hak Atas Penjelasan (*Right to Explanation*)**: Kandidat yang tidak lolos berhak mengetahui alasan objektif. Sistem kami memastikan setiap skor L1–L5 wajib memiliki kutipan transkrip pendukung, dan skill yang tidak sempat diuji wajib dilabeli **`Belum Diuji (Not Assessed)`**, bukan disamarkan sebagai skor rendah (L1).
-
----
-
-## 2. Severity-Ranked Problem & Gap Analysis
-
-Seluruh temuan bug dan cacat arsitektur pada codebase awal diklasifikasikan ke dalam matriks keparahan (P0 hingga P3) sesuai dampaknya terhadap integritas penilaian kandidat:
-
-```mermaid
-pie title Distribusi Severity Gap Codebase
-    "P0 - Critical Blocker / IDOR": 8
-    "P1 - Significant Damage / State Loss": 8
-    "P2 - Quality & Trust Breaches": 8
-    "P3 - Technical Debt & Polish": 6
-```
-
-### 🔴 P0 — Critical (Integritas Scoring, Kebocoran Data Multi-Tenant, Total Blocker)
-
-| Kode | Area | Jenis Masalah | Root Cause & Dampak | Status Resolusi |
-|---|---|---|---|---|
-| **P0-1** | API | IDOR / Tenant Leak | `portfolios#show`, `export`, dan `fitgap` mencari data via `Portfolio.find(params[:id])` tanpa membatasi `tenant_id`. Tenant A bisa mengunduh portofolio kandidat Tenant B. | [x] **RESOLVED (PR #6)** |
-| **P0-2** | API | IDOR / State Tampering | `portfolio_skills#override` menggunakan `PortfolioSkill.find` tanpa verifikasi tenant. Assessor luar bisa mengubah nilai kandidat perusahaan lain. | [x] **RESOLVED (PR #6)** |
-| **P0-3** | Web | False Complete State | Kegagalan mic/jaringan ditangkap di `.catch()` dan langsung mengarahkan ke halaman `complete` seolah kandidat telah menyelesaikan interview dengan sempurna. | [x] **RESOLVED (PR #8)** |
-| **P0-4** | API/Web | Silent-Zero Fake Score | Skill yang tidak sempat diuji (`not_yet`) tidak dimunculkan atau dipaksa default ke L1. Kandidat dirugikan karena dinilai buruk atas skill yang tidak pernah ditanyakan. | [x] **RESOLVED (PR #7)** |
-| **P0-5** | Web | Fragile External CDN | Cek mikrofon & internet speed bergantung pada CDN pihak ketiga (`jsdelivr`, `unpkg`, `httpbin.org`). Jika CDN down/diblokir ISP, kandidat terblokir total. | [x] **RESOLVED (PR #9)** |
-| **P0-6** | API | Invite Link Backend Origin | `invite_url` mengarah ke port 3001 (API), bukan ke port 5173 (Frontend). Kandidat yang mengklik tautan undangan mendapatkan error 404 Rails. | [x] **RESOLVED (PR #11)** |
-| **P0-7** | API | Gemini Multimodal Deprecation | Model `gemini-2.0-flash-exp` pensiun di server Google sehingga WebSocket live voice gagal handshake (404). | [x] **RESOLVED (PR #15)** |
-| **P0-8** | API | FitGap Zero-Skill Failure | Validasi `presence: true` pada `FitGapReport#skill_comparisons` menganggap array kosong `[]` sebagai invalid, menyebabkan worker gagal diam-diam dan UI stuck loading selamanya. | [x] **RESOLVED (PR #15)** |
-
-### 🟠 P1 — Significant (Kehilangan Data, Keamanan Sesi, Sinkronisasi)
-
-- **P1-1 (API)**: Regenerasi portfolio memanggil `destroy_all` sebelum `create!` tanpa database transaction. Gagal di tengah jalan mengakibatkan skor lama terhapus permanen. *(Fixed in PR #15)*
-- **P1-2 (Web)**: Izin mikrofon ditolak namun timer dan sesi tetap berjalan tanpa audio, menghasilkan transkrip kosong. *(Fixed in PR #8)*
-- **P1-3 (Web)**: Komponen radar chart SVG crash saat menerima skor 0 atau array kosong. *(Fixed in PR #12)*
-- **P1-4 (API)**: Token undangan sesi tidak memiliki masa kedaluwarsa, dapat diakses tanpa batas waktu. *(Fixed in PR #10)*
-- **P1-5 (API)**: Akun admin yang dinonaktifkan (`active: false`) tetap bisa melakukan aksi API karena JWT tidak memeriksa status database. *(Fixed in PR #10)*
-- **P1-6 (Web)**: Fallback token `VITE_DEV_TOKEN` di `authAtom` membuat tombol logout tidak berfungsi di dev/staging. *(Fixed in PR #10)*
-- **P1-7 (Web)**: Timer interview menggunakan interval lokal klien, memicu dialog "Time Expired" palsu saat refresh. *(Fixed in PR #15)*
-- **P1-8 (API/Web)**: Potongan data suara biner base64 dan ambiguitas ASR multibahasa mengotori gelembung transkrip. *(Fixed in PR #15)*
-
-### 🟡 Constraint Signals (Eskalasi Arsitektur untuk Engineering Lead)
-1. **Isolasi Tenant di Level Model (*Defense in Depth*)**: Mengandalkan programmer untuk selalu mengingat `current_tenant.portfolios.find` di controller sangat rentan lolos (human error). Keputusan arsitektur terbaik adalah menyuntikkan `include TenantScoped` (`default_scope`) langsung di level model ActiveRecord dan migrasi kolom `tenant_id` ke seluruh tabel turunan.
-2. **Zero Dependency pada CDN Pihak Ketiga**: Hardware check harus diinternalisasi 100% menggunakan API backend sendiri (`/api/v1/ping` dan Web Audio API bawaan browser) untuk menjamin uptime rekrutmen.
-3. **Pemisahan Jelas antara `not_assessed`, `unparseable`, dan `L1-L5`**: Sistem penilaian AI tidak boleh memalsukan skor ketika data tidak mencukupi.
-
----
-
-## 3. Strategic Option Evaluation & Trade-off Matrix
-
-Untuk memperbaiki arsitektur platform secara menyeluruh, kami mengevaluasi dua opsi pendekatan implementasi:
-
-```mermaid
-graph LR
-    subgraph Opsi_A ["Opsi A: Single Blanket Rewrite"]
-        A1[Satu PR Raksasa] --> A2[Sulit Direview]
-        A2 --> A3[Risiko Regresi Tinggi]
-    end
-    subgraph Opsi_B ["Opsi B: Modular Flagship Delivery (Pilihan Terbaik)"]
-        B1[10 Sub-PR Tematik P0-P3] --> B2[PR #15 Flagship Monozukuri]
-        B2 --> B3[Reviewer Friendly & Zero Regression]
-    end
-```
-
-### ⚖️ Trade-off Decision Matrix
-
-| Kriteria Evaluasi | Opsi A (Blanket Single PR) | Opsi B: Modular 10 Sub-PRs + Flagship PR #15 *(Dipilih)* |
+| Ukuran | Sebelum | Sesudah |
 |---|---|---|
-| **Kemudahan Code Review** | ❌ Sangat Berat (>40 file sekaligus) | ⭐ **Sangat Ringan & Fokus** (perbaikan dapat diaudit per topik) |
-| **Keamanan Migrasi Database** | ⚠️ Berisiko merusak relasi lama | ⭐ **100% Reversible** (diuji maju-mundur `db:rollback`) |
-| **Kredibilitas Bukti Uji** | ⚠️ Sulit membuktikan root cause | ⭐ **Dilengkapi Seeded Fault Proof** (commit merah ➔ hijau) |
-| **Stabilitas Pipeline Realtime** | ⚠️ Rawan regresi audio | ⭐ **Setiap lapisan WebSocket & HTTP diuji terpisah** |
-| **Kesesuaian Rubrik Monozukuri** | 3.0 / 5.0 | ⭐ **5.0 / 5.0 (Craftsmanship Standar Industri)** |
+| RSpec (api) | 0 di `main`, 69 di `dev` (1 gagal karena butuh Redis hidup) | **168 contoh, 0 gagal**, tanpa Redis dan tanpa `application.yml` |
+| Vitest (web) | tidak ada runner di `main` | **36 tes, 0 gagal** |
+| CI | tidak ada | RSpec, `tsc`, vitest, brakeman (0 warning), bundler-audit |
+| Migration baru | — | 3, semuanya reversible dan aman untuk row lama |
+| Seeded fault | — | **17 branch** di fork, tiap fix dirusak lalu di-revert (history terlihat) |
+| Skala perubahan baru | — | 29 commit, 70 file, +1.814 / −104 baris |
 
-**Keputusan Strategis**: Kami memilih **Opsi B** dengan menyusun 10 Sub-PR yang rapi di GitHub, berpuncak pada **Pull Request #15** sebagai etalase keunggulan teknis (*Flagship AI Multimodal & Monozukuri Polish*).
+> **Klaim kedalaman: backend-heavy.** Sekitar 75% baris kode baru (di luar dokumentasi) ada di `api/`: kode aplikasi, migration, dan spec (1.262 dari 1.678 baris). Sisi web dikerjakan sebagai *seam*: state gagal dan retry di halaman yang membaca hasil pipeline tersebut.
 
----
+### Pull Request (Option A — satu PR)
 
-## 4. Self-Derived Acceptance Criteria & Defensive Edge Cases
+Satu PR komprehensif (**Option A**): [Pull Request #141](https://github.com/rakamindev/ai-interview-platform/pull/141), dari `feat/be-hardening` ke `main`.
 
-Setiap perbaikan kode dikembangkan berdasarkan skenario *Given-When-Then* yang ketat:
+Branch ini dipotong dari `dev`, yaitu pekerjaan frontend-heavy dari percobaan saya sebelumnya. Karena itu diff terhadap `main` juga memuat pekerjaan tersebut (164 file). **Pekerjaan baru untuk submission ini adalah 29 commit di `dev..feat/be-hardening`**, dengan pembagian berikut.
 
-### AC-1: Tenant Isolation & IDOR Protection (P0-1, P0-2)
-- **GIVEN**: Assessor terautentikasi pada Tenant A (`test-corp`).
-- **WHEN**: Assessor mencoba mengakses endpoint `/api/v1/portfolios/:id`, `/export`, `/fitgap`, atau melakukan *override* skor pada portfolio milik Tenant B.
-- **THEN**: Backend wajib mengembalikan respons **`404 Not Found`** (bukan 200 dan bukan 500 error), mencegah kebocoran keberadaan data tenant lain.
+| Area | Perubahan | File |
+|---|---|---|
+| `api/app` | generator, worker, auth, WebSocket, lock, middleware | 16 file, +183/−41 |
+| `api/spec` | spec baru | 19 file, +931 |
+| `api/db` | 3 migration, schema, seeds | 5 file |
+| `web/src` | state gagal, retry, form, interceptor, test | 15 file, +338/−17 |
+| `.github` | CI | 1 file |
+| `assessment` | dokumentasi | 3 file |
 
-### AC-2: Explicit Not-Assessed Skill State (P0-4)
-- **GIVEN**: Assessment dikonfigurasi dengan 3 skill, namun selama wawancara AI hanya sempat menggali 2 skill.
-- **WHEN**: Portofolio kompetensi digenerate oleh AI.
-- **THEN**: Skill ke-3 wajib berstatus **`not_assessed`**, berlabel **`Belum Diuji`**, tanpa nilai angka (bukan L1), dan disertai penjelasan: *"Skill ini dikonfigurasi pada asesmen namun belum sempat diuji selama sesi wawancara."*
+## 2. Product Context & UU PDP 2022 Legal Compliance
 
-### AC-3: Candidate Error State & Hardware Resilience (P0-3, P0-5)
-- **GIVEN**: Kandidat mengalami kegagalan izin mikrofon, jaringan terputus permanen, atau WebSocket gagal handshake.
-- **WHEN**: Error terjadi di halaman `/interview/:token`.
-- **THEN**: Sistem mengarahkan ke layar **`Error State`** yang informatif dengan panduan perbaikan dan tombol *"Coba Hubungkan Ulang"*, serta dilarang keras mengarahkan kandidat ke layar *"Interview Selesai (Complete)"*.
+**Produk.** Assessor mendefinisikan role dan skill (L1–L5). Kandidat menjalani interview suara realtime bersama Gemini Live. Sebuah *coverage map* melacak skill yang sudah diprobe. Setelah sesi selesai, transcript dan coverage map diubah menjadi portfolio (rating, confidence, kutipan bukti) dan matriks fit/gap.
 
-### AC-4: AI Multimodal Live Voice & Audio Sanitization (P0-7, P1-8)
-- **GIVEN**: Sesi interview live audio berlangsung dalam Bahasa Indonesia.
-- **WHEN**: Kandidat berbicara dan data dikirimkan melalui WebSocket middleware.
-- **THEN**: 
-  1. Koneksi live terhubung lancar ke `gemini-3.1-flash-live-preview`.
-  2. Modul transkripsi dipasangi *Language Pinning Directive* sehingga tidak salah menerjemahkan ucapan menjadi aksara asing (Korea/Prancis).
-  3. Gelembung chat bebas dari potongan data suara biner base64 maupun kurung kurawal JSON (`}\n]`).
+**Industri (hiring Indonesia).** Volume tinggi (rekrutmen kampus, BPO, sales) adalah titik sakit terbesar. Parsing CV, penjadwalan, dan tes psikometri sudah komoditas. Leverage sebenarnya adalah **sinyal teknis yang terstruktur dan bisa diaudit** di ujung atas funnel. Diferensiatornya adalah coverage map ditambah kutipan bukti, sehingga assessor bisa mengaudit *kenapa* kandidat mendapat L3, bukan hanya melihat angkanya.
 
-### AC-5: FitGap Zero-Skill Benchmark & Fallback (P0-8)
-- **GIVEN**: Assessor memilih benchmark lowongan yang belum memiliki daftar skill target.
-- **WHEN**: Analisis kecocokan lowongan dijalankan.
-- **THEN**: Sistem menghasilkan perbandingan *zero-skill* yang valid dengan skor kecocokan 0% tanpa memicu kegagalan background worker atau *infinite loading spinner*.
+**Apa yang harus tetap benar.**
+1. Skor harus cukup dipercaya sampai manusia bertindak tanpa mengulang kerja.
+2. AI harus **gagal dengan jelas, bukan diam-diam**. Rating kosong akibat timeout tidak boleh terlihat sama dengan kandidat yang memang berskor rendah.
+3. Setup assessment harus tetap cepat.
 
----
+**Pengguna.** Assessor, recruiter, dan hiring manager bukan evaluator teknis AI, jadi mereka tidak akan menyadari bug scoring yang halus. Itu menjadikan kebenaran pipeline sebagai concern P0 secara default.
 
-## 5. Sub-PR Execution Log & Technical Architecture
+**Kandidat yang tidak pernah memilih.** WebSocket putus, model gagal, atau portfolio gagal dibuat bisa menutup peluang kerja seseorang tanpa tanda apa pun. Bahaya konkret yang saya rancang untuk dihindari:
+- error teknis dibaca sebagai kandidat diam;
+- skill yang tidak pernah ditanyakan tampil sebagai skor rendah, bukan "belum dinilai";
+- job ganda menghasilkan rating berbeda dari transcript yang sama tanpa catatan.
 
-```mermaid
-classDiagram
-    class Organization {
-      +bigint id
-      +string scheme
-      +string name
-    }
-    class TenantScoped {
-      <<module>>
-      +default_scope tenant_id
-    }
-    class Assessment {
-      +bigint tenant_id
-      +string name
-      +string language
-      +integer time_limit_min
-    }
-    class Session {
-      +bigint tenant_id
-      +string invite_token
-      +string candidate_name
-      +session_status status
-    }
-    class Portfolio {
-      +bigint tenant_id
-      +bigint session_id
-      +generation_status generation_status
-    }
-    class PortfolioSkill {
-      +bigint tenant_id
-      +integer ai_level
-      +string status
-      +string competency_summary
-    }
-    class FitGapReport {
-      +bigint tenant_id
-      +jsonb skill_comparisons
-      +text overall_narrative
-    }
+**UU PDP.** Audio, transcript, dan skor adalah data pribadi individu bernama, dan dapat mendekati data sensitif. Implikasinya: isolasi tenant adalah kewajiban kepatuhan (bukan sekadar bug), transcript dan PII tidak boleh masuk log, dan pesan error model tidak boleh tersimpan atau tampil ke pengguna. Kebijakan retensi dan hapus data belum ada di produk; ini saya catat sebagai *missing specification* dan tidak saya kerjakan tanpa keputusan hukum dan produk.
 
-    TenantScoped <|.. Assessment
-    TenantScoped <|.. Session
-    TenantScoped <|.. Portfolio
-    TenantScoped <|.. PortfolioSkill
-    TenantScoped <|.. FitGapReport
-    Organization "1" --> "*" Assessment
-    Assessment "1" --> "*" Session
-    Session "1" --> "1" Portfolio
-    Portfolio "1" --> "*" PortfolioSkill
-    Portfolio "1" --> "*" FitGapReport
-```
+## 3. Severity-Ranked Problem & Gap Analysis (P0–P3 Matrix)
 
-### Rincian 10 Sub-PR yang Telah Di-Ship:
+Pekerjaan `dev` sebelumnya sudah menutup gap P0/P1 awal (IDOR lintas tenant, state "belum dinilai", state error kandidat, hardware check, invite link, dan lainnya). Audit ulang atas `dev` menemukan gap **baru**, lalu dua putaran audit keamanan menemukan sisanya. Semuanya diverifikasi langsung di kode, bukan diasumsikan.
 
-#### 1. [Sub-PR 1: Tenant Isolation Hardening (PR #6)](https://github.com/rakamindev/ai-interview-platform/pull/6)
-- **Files**: `api/db/migrate/*`, `api/app/models/concerns/tenant_scoped.rb`, `api/app/models/portfolio.rb`, `api/spec/models/*`, `api/spec/requests/*`.
-- **Dampak**: Menambahkan kolom `tenant_id` terindeks pada tabel turunan dan menginjeksi `TenantScoped` di level ORM. Menutup celah IDOR di 5 endpoint tanpa perlu menambal controller satu per satu.
+### 3.1 Temuan yang ditutup di PR ini
 
-#### 2. [Sub-PR 2: Not-Assessed Skill State Representation (PR #7)](https://github.com/rakamindev/ai-interview-platform/pull/7)
-- **Files**: `api/app/services/portfolios/generator.rb`, `web/src/components/portfolio/SkillPortfolioCard.tsx`.
-- **Dampak**: Menerapkan 3-state rendering (`assessed`, `not_assessed`, `unparseable`). Menjamin skill yang tidak diuji tidak hilang dan tidak dipalsukan menjadi L1.
+| Sev | Layanan | Jenis | Temuan | Dampak pada workflow |
+|---|---|---|---|---|
+| **P0** | api | defective | Gemini gagal, generator menyimpan portfolio **semua `not_assessed` berstatus `complete`** | Assessor melihat "kandidat tidak diuji sama sekali" padahal modelnya yang error |
+| **P0** | api | defective | `login` fallback ke `organizations LIMIT 1` atau `test-corp` | Admin global bisa mendapat token tenant sembarang |
+| **P0** | api | defective | WebSocket menerima JWT role apa pun dan akun nonaktif | Bypass role dan revocation lewat jalur non-HTTP |
+| **P0** | api | missing spec | Admin di tabel `users` global tanpa tenant | Satu admin dapat menjangkau semua tenant |
+| **P0** | api | defective | Dependency dengan advisory High (puma, rack, websocket-driver, jwt, nokogiri, faraday, addressable) | DoS dan kerentanan yang diketahui di jalur produksi |
+| **P1** | api | missing spec | Job ganda di portfolio yang sama, tanpa transaksi | Skor bisa hilang atau setengah jadi |
+| **P1** | api+web | missing spec | Job fit/gap habis retry tanpa terminal state | UI polling "Generating…" tanpa akhir |
+| **P1** | api | defective | Admin nonaktif tetap mendapat token saat login | Akses tidak dicabut sampai token kedaluwarsa |
+| **P1** | api | defective | Audio WS mengabaikan expiry invite; `audio_complete` bisa menutup sesi yang belum mulai | Bypass aturan invite; interview bisa "terbakar" lewat link bocor |
+| **P1** | api | defective | Audio WS tanpa guard koneksi ganda | Dua tab membuka dua sesi Gemini: biaya ganda, transcript tercampur |
+| **P1** | api | defective | `Organization.identify` mencocokkan 4 kolom dengan `.first` tanpa urutan | Tenant bisa berubah antar-panggilan |
+| **P1** | web | defective | Salah password memicu reload halaman login | Pesan error tidak pernah terlihat |
+| **P1** | web | defective | Edit Vacancy/Assessment yang gagal load menampilkan form kosong yang bisa disimpan | Data asli bisa tertimpa |
+| **P2** | api | defective | Pesan error model (`e.message`) disimpan dan tampil | Bisa membocorkan detail request |
+| **P2** | api | missing spec | Tanpa `filter_parameter_logging`; token tanpa `exp` diterima; WS tanpa batas ukuran; `assessor_notes` tanpa batas; rate limit hanya per-IP | Kebocoran log, token abadi, memory DoS, spam |
+| **P2** | api+web | missing spec | `SystemPromptGeneratorWorker` mati diam-diam; axios tanpa timeout; container berjalan sebagai root | Kegagalan tak terlihat, spinner tanpa akhir |
+| **P2** | api+web | missing spec | Tidak ada CI; spec `fitgap` bergantung Redis hidup | Regresi lolos tanpa terdeteksi |
 
-#### 3. [Sub-PR 3: Candidate Error State Machine (PR #8)](https://github.com/rakamindev/ai-interview-platform/pull/8)
-- **Files**: `web/src/pages/interview/InterviewPage.tsx`, `web/src/hooks/useAudioWebSocket.ts`.
-- **Dampak**: Memisahkan kanal error teknis dari alur penyelesaian sukses. Menghilangkan bug di mana mikrofon gagal langsung dianggap sesi selesai.
+### 3.2 Missing specification vs defective implementation
 
-#### 4. [Sub-PR 4: Internal Hardware & Network Check (PR #9)](https://github.com/rakamindev/ai-interview-platform/pull/9)
-- **Files**: `web/src/utils/internetSpeedTest.ts`, `api/app/controllers/api/v1/ping_controller.rb`.
-- **Dampak**: Mengganti ketergantungan CDN eksternal dengan endpoint latency backend internal (`/api/v1/ping`) dan Web Audio API bawaan browser.
+**Belum pernah didefinisikan (missing spec):** terminal state untuk job non-portfolio, masa berlaku dan koneksi tunggal untuk sesi, tenant milik admin lokal, batas ukuran pesan dan catatan, harness test dan CI, serta kebijakan retensi data kandidat.
 
-#### 5. [Sub-PR 5: Auth Hardening & Dev Token Leak Prevention (PR #10)](https://github.com/rakamindev/ai-interview-platform/pull/10)
-- **Files**: `api/app/auth/authorize_api_request.rb`, `web/src/stores/authAtom.ts`.
-- **Dampak**: Verifikasi status `users.active` di database untuk mencegah akses akun terblokir, dan pembersihan fallback `VITE_DEV_TOKEN` agar logout berfungsi nyata.
+**Sudah didefinisikan tetapi rusak (defective):** pola `TenantScoped` sudah ada tetapi login mengabaikannya; `AuthorizeApiRequest` ada di HTTP tetapi tidak dipakai WebSocket; generator sudah punya *fallback* yang niatnya defensif tetapi menyembunyikan kegagalan; mekanisme revocation akun hanya berlaku di request berikutnya, bukan saat login.
 
-#### 6. [Sub-PR 6: Candidate Invite Link Origin Fix (PR #11)](https://github.com/rakamindev/ai-interview-platform/pull/11)
-- **Files**: `api/app/models/session.rb`, `api/config/application.yml.sample`.
-- **Dampak**: Menyesuaikan domain link undangan kandidat ke `FRONTEND_BASE_URL` (port 5173).
+### 3.3 Constraint Signal (yang saya eskalasi ke Technical Lead pada proyek nyata)
 
-#### 7. [Sub-PR 7: UI/UX Baseline Polish (PR #12)](https://github.com/rakamindev/ai-interview-platform/pull/12)
-- **Files**: `web/src/pages/auth/LoginPage.tsx`, `web/src/components/ui/card.tsx`.
-- **Dampak**: Menambahkan background depth, show/hide password toggle, credential helper, dan logo resmi Rakamin.
+1. **Rails 7.0 sudah EOL** (sejak April 2025). Dua belas advisory pada activestorage, activesupport, activerecord, dan actionview hanya hilang dengan upgrade ke 7.2 atau lebih baru. Ini keputusan roadmap, bukan patch. Untuk sementara dicatat eksplisit di `api/.bundler-audit.yml` beserta alasannya; advisory baru tetap menggagalkan CI.
+2. **Revocation role `assessor`** (token dari rakamin-api) tidak bisa dicabut dari aplikasi ini karena tidak ada data lokal untuk diperiksa. Perlu webhook atau cache bersama dari aplikasi saudara.
+3. **Invite token kandidat lewat query string WebSocket** masuk access log proxy. Solusi yang benar (pesan `auth` pertama) mengubah protokol FE dan BE, jadi dijadwalkan terpisah.
+4. **`audio_websocket_middleware.rb` (800+ baris)** punya test autentikasi, batas ukuran, dan lock, tetapi belum test perilaku end-to-end (timer, reconnect, transisi coverage). Ini risiko struktural terbesar yang tersisa.
+5. **JWT disimpan di `localStorage`.** Risiko kecil saat ini (tidak ada `innerHTML`), tetapi cookie `HttpOnly` plus CSRF lebih kuat dan mengubah auth di kedua sisi.
+6. **Retensi dan hapus data kandidat** (UU PDP) butuh keputusan hukum dan produk.
 
-#### 8. [Sub-PR 8: Schema Qualification & Candidate Identity (PR #13)](https://github.com/rakamindev/ai-interview-platform/pull/13)
-- **Files**: `api/app/models/organization.rb`, `api/app/controllers/api/v1/sessions_controller.rb`.
-- **Dampak**: Menjaga query `public.organizations` dari ambiguitas `search_path` PostgreSQL dan mengekspos field `candidate_name`.
+## 4. Strategic Option Evaluation, Acceptance Criteria & Trade-off Matrix
 
-#### 9. [Sub-PR 9: Global Candidates Pool & Mobile UX Revamp (PR #14)](https://github.com/rakamindev/ai-interview-platform/pull/14)
-- **Files**: `web/src/pages/candidates/CandidateListPage.tsx`, `web/src/components/ui/pagination-control.tsx`.
-- **Dampak**: Halaman daftar kandidat global lintas-assessment dengan paginasi, pencarian live, dan tata letak mobile-responsive.
+### 4.1 Opsi solusi
 
-#### 10. [Flagship PR #15: AI Multimodal Voice, Unified Evaluation Hub & Localization](https://github.com/rakamindev/ai-interview-platform/pull/15)
-- **Files**: `api/app/channels/audio_websocket_middleware.rb`, `api/app/clients/gemini/*`, `api/app/services/*`, `web/src/pages/portfolio/PortfolioPage.tsx`, `web/src/components/portfolio/OverridePanel.tsx`, `web/src/components/ui/searchable-select.tsx`.
-- **Dampak**: 
-  - Migrasi live audio WebSocket ke `gemini-3.1-flash-live-preview` dan HTTP ke `gemini-3.5-flash` (`v1beta`).
-  - Arsitektur 429 *Exponential Backoff Retry* & *Multi-Model Fallback* (`gemini-2.5-flash` / `gemini-1.5-flash`).
-  - *Unified Session Hub (3 Tabs)*: Evaluasi Skill, Kecocokan Lowongan, dan Transkrip Percakapan.
-  - Komponen *Live SearchableSelect Combobox* dan *Radix Dialog Modal Override Rating* lengkap dengan Jejak Audit Assessor.
-  - Lokalisasi penuh Bahasa Indonesia untuk prompt AI dan antarmuka recruiter.
-  - Tombol cetak langsung PDF via iframe tersembunyi.
+**Pilihan bentuk PR: Option A (satu PR) dipilih.** Brief memberi dua opsi. Option B (umbrella plus sub-PR) sudah saya pakai pada percobaan sebelumnya dan menghasilkan 10 PR yang sulit diikuti. Kali ini perubahan-perubahannya saling terkait (status portfolio, retry worker, dan UI-nya), sehingga satu PR dengan commit kecil bertema lebih mudah diaudit dan bisa diuji sebagai satu kesatuan.
 
----
+**Pilihan mekanisme kegagalan dan job ganda** (inti perubahan):
 
-## 6. Verification, Automated Testing Rigor & Seeded Fault Proofs
-
-### 🧪 Test Suite Coverage (100% Green)
-
-| Suite Pengujian | Command Eksekusi | Hasil | Cakupan Validasi |
+| | **A. Guard di service + status di DB (dipilih)** | B. Gem unique-jobs Sidekiq | C. State machine (AASM) |
 |---|---|---|---|
-| **Backend RSpec** | `bundle exec rspec` | **64/64 Passing (0 Failures)** | Model specs, tenant scoping, IDOR regression, rate limit retry, auth verification |
-| **Frontend Vitest** | `npm test -- --run` | **25/25 Passing (0 Failures)** | 3-state skill cards, audio websocket hook, internet speed test, auth atom, interview page |
-| **Production Build** | `tsc && vite build` | **Build Success in 2.57s** | TypeScript strict mode compilation & Vite asset chunking |
+| Dampak produk | Menutup kegagalan diam-diam, job ganda, dan UI menggantung sekaligus | Hanya menutup job ganda | Menutup semuanya, rapi |
+| Biaya | 2 kolom nullable, sekitar 60 baris | Dependency baru dan lock Redis terpisah | Dependency baru dan refactor semua status |
+| Long-term maintainability | State sudah ada di DB; mudah dibaca dan dites | Lock Redis tidak terlihat dari DB | Terbaik jangka panjang |
+| Failure mode | Lock baris DB; worker mati diambil alih setelah 10 menit | Lock Redis bisa menggantung; tidak tahu status DB | Migrasi status berisiko untuk data lama |
+| Bisa dibatalkan? | Murah (rollback dua migration) | Murah | Mahal |
+| Contextual fit | **Terbaik untuk codebase dan tenggat ini** | Parsial | Berlebihan untuk skala ini |
 
-### 🔬 Seeded Fault Testing (Bukti Ketangguhan Test Suite)
-Untuk membuktikan bahwa unit test kami benar-benar menguji logika bisnis dan bukan tes palsu (*tautological tests*), kami melakukan **Seeded Fault Injection** pada branch scratch terisolasi:
+**Pilihan pengikatan admin ke tenant:** `users.organization_id` (dipilih) vs login per-tenant lewat subdomain. Opsi pertama tidak mengubah alur login yang ada dan bisa dimigrasikan aman (nullable, backfill hanya bila tepat satu organisasi, selain itu *fail closed*).
 
-```mermaid
-gitGraph
-    commit id: "Original Baseline (Tests Green)"
-    branch seeded-fault
-    checkout seeded-fault
-    commit id: "Inject Fault: Cabut TenantScoped"
-    commit id: "Test Runner Fails: 25/33 Red!"
-    commit id: "Revert Fault: Pasang TenantScoped"
-    commit id: "Test Runner Passes: 33/33 Green!"
-    checkout main
+**Pilihan guard koneksi ganda:** Redis `SET NX EX` dengan TTL dan perpanjangan (dipilih) vs lock in-process. Lock in-process tidak berlaku lintas worker Puma atau pod. Konsekuensinya lock harus fail-open bila Redis mati, agar gangguan infrastruktur tidak mengunci kandidat dari interview-nya.
+
+### 4.2 Acceptance criteria (ditulis sebelum kode)
+
+- Model gagal atau respons rusak **tidak pernah** menghasilkan `complete` berisi data kosong. Job di-retry, dan setelah retry habis statusnya `failed` serta bisa diulang manual.
+- Penyimpanan skill adalah satu transaksi. Kegagalan di tengah tidak menghapus skor lama.
+- Job ganda: portfolio `complete` atau `generating` yang baru (kurang dari 10 menit) dilewati. `generating` yang basi (worker mati) diambil alih.
+- Dari sebuah error hanya nama class yang disimpan atau ditampilkan, tidak pernah `message`.
+- Fit/gap gagal menghasilkan state `failed` di API dan UI, tombol coba lagi, dan polling berhenti.
+- Admin nonaktif atau bukan milik tenant tidak mendapat token, di HTTP maupun WebSocket.
+- Halaman yang gagal load tidak pernah menampilkan form kosong yang bisa disimpan.
+- Migration reversible, aman untuk row lama, dan tidak ada data pribadi di log atau commit.
+
+### 4.3 Edge case yang ditangani
+
+| Kasus | Perilaku |
+|---|---|
+| Skill tidak pernah diprobe | `not_assessed` (dari `dev`), tidak pernah skor rendah palsu |
+| Respons model rusak atau timeout | Job di-retry, lalu `failed`, tidak ada portfolio kosong |
+| Dua job berjalan bersamaan | Lock baris; yang kedua dilewati |
+| Worker mati saat `generating` | Diambil alih setelah 10 menit |
+| Redis mati | Lock koneksi fail-open; kandidat tetap bisa interview |
+| Refresh halaman saat interview | Error `already_connected` bersifat *recoverable*; klien retry dan masuk begitu lock lepas |
+| Tab kedua yang ditolak menutup | Tidak melepas lock milik tab pertama |
+| Lock kedaluwarsa lalu diambil koneksi lain | Pemilik lama tidak bisa menghapus lock baru (dicek token) |
+| Catatan assessor 2.000+ karakter | Ditolak API (422); form membatasi input dan menampilkan penghitung |
+| Catatan lama yang sudah melebihi batas | Tombol simpan dinonaktifkan dengan pesan jelas |
+| Email login dengan huruf besar, body JSON atau form | Throttle per-akun menghitung sama |
+| Admin lama tanpa `organization_id` | Ditolak saat login (fail closed), bukan diberi akses ke semua tenant |
+| Backend down saat halaman dibuka | Pesan error dan tombol coba lagi, tanpa layar kosong |
+
+## 5. Automated Test Suite & Seeded Fault Verification
+
+### 5.0 Baseline & Setup
+
+- Repo dijalankan lokal (Rails + PostgreSQL + Redis, React + Vite). Branch kerja dipotong dari `dev`, tidak ada commit langsung ke `main`, commit dibuat kecil dan bermakna (satu fix per commit).
+- **Baseline yang saya temukan:** suite RSpec di `dev` memuat 69 contoh dengan satu yang gagal. Penyebabnya, spec `fitgap` memanggil `perform_async` ke Redis sungguhan, sehingga suite tidak hermetic dan pasti gagal di CI. Diperbaiki lebih dulu dengan `Sidekiq::Testing.fake!` (commit pertama) supaya semua bukti sesudahnya bisa dipercaya.
+- Database test memakai container PostgreSQL terpisah. Suite juga saya jalankan dengan `env -i` tanpa `application.yml` untuk memastikan CI tidak bergantung pada file lokal.
+
+### 5.1 Cakupan test
+
+| Set | Isi | Hasil |
+|---|---|---|
+| RSpec | model, service, worker, request, channel, config, lib | **168 contoh, 0 gagal** |
+| Vitest | halaman fit/gap, edit vacancy, portfolio, override panel, api client | **36 tes, 0 gagal** |
+| `tsc --noEmit` | seluruh web | bersih |
+| brakeman | seluruh api (kecuali cek EOLRails yang sudah dieskalasi) | 0 warning |
+| bundler-audit | seluruh api | bersih (12 advisory Rails 7.0 dikecualikan eksplisit dengan alasan) |
+
+Harness dijalankan dalam kondisi CI (`env -i`, tanpa `application.yml`, tanpa Redis) supaya bukti tidak bergantung pada mesin saya. Setiap fix ditulis **test dulu** dan dilihat gagal sebelum kode diubah. Beberapa test gagal karena bug produk yang nyata (misalnya login admin nonaktif mengembalikan 200).
+
+### 5.2 Seeded fault test (17 branch di fork)
+
+Tiap fix dirusak di branch scratch, test dijalankan sampai merah, lalu di-revert. History dua commit (fault lalu revert) tetap terlihat di `Vputri:scratch/seeded-fault-*`.
+
+| Branch (`scratch/seeded-fault-…`) | Kerusakan yang disuntikkan | Test gagal |
+|---|---|---|
+| `generator-swallows-error` | hapus `raise` di generator | 2 |
+| `generator-duplicate-job` | hapus guard `complete?` | 1 |
+| `fitgap-failed-served-as-cached` | report `failed` dianggap cache | 1 |
+| `fitgap-ui-ignores-failed` | UI mengabaikan status `failed` | 2 |
+| `inactive-admin-login` | hapus cek `active?` di login | 1 |
+| `login-tenant-fallback` | login memakai organisasi pertama | 1 |
+| `login-ignores-admin-tenant` | login tidak cek `organization_id` | 3 |
+| `token-ignores-admin-tenant` | otorisasi tidak cek `organization_id` | 4 |
+| `ws-skips-role-check` | WebSocket tanpa cek role | 2 |
+| `audio-complete-pending` | `audio_complete` menerima sesi belum mulai | 1 |
+| `jwt-no-exp-required` | token tanpa `exp` diterima | 1 |
+| `log-filter-password` | hapus filter `:password` | 1 |
+| `login-email-throttle-off` | throttle per-akun mati | 2 |
+| `org-identify-unordered` | urutan tenant tidak deterministik | 1 |
+| `ws-lock-not-released` | lock tidak dilepas saat tutup | 1 |
+| `ws-lock-not-checked` | koneksi kedua tidak diperiksa | 2 |
+| `lock-releases-others` | lock milik koneksi lain ikut dihapus | 1 |
+
+Satu seeded fault sempat **lolos** pertama kali (`org-identify-unordered`): test saya lemah karena urutan `id` kebetulan sama dengan hasil yang diharapkan. Saya menambah kasus arah sebaliknya, lalu memverifikasi bahwa test gagal untuk urutan `id ASC` maupun `id DESC`.
+
+### 5.3 AI Verification Moment
+
+AI dipakai sebagai leverage yang diverifikasi, bukan sebagai oracle. Lima kejadian di mana output AI salah atau berisiko, beserta cara saya memverifikasi:
+
+1. **Filter log terlalu lebar.** Draf awal memakai `:text` polos. Rails mencocokkan *sebagian* nama key, sehingga `context` dan `textarea` ikut tersamar. Diperbaiki menjadi `/\Atext\z/` dan ditambah test bahwa key tersebut tidak ikut disamarkan.
+2. **Tebakan env CI salah.** Draf memakai `JWT_SECRET_KEY`. Saya menjalankan suite dengan `env -i` tanpa `application.yml`. Hasilnya `KeyError: ALLOWED_ORIGINS`, dan workflow diperbaiki berdasarkan hasil itu, bukan tebakan.
+3. **Bump dependency `json` ke 3.x.** `bundle update` menaikkan `json` ke 3.0.2 dan memecahkan factory (`ArgumentError`). Saya melihat suite merah, mem-pin `json` ke 2.x yang sudah ter-patch, dan menjalankan ulang seluruh suite serta boot Puma 7.
+4. **Perintah `brakeman` yang tidak ada.** Opsi `--skip-checks` yang saya tulis ternyata tidak valid (`invalid option`); opsi yang benar `-x EOLRails`. Ketahuan karena saya menjalankan perintah CI secara lokal sebelum commit.
+5. **Aksi git yang berisiko.** `git add api` dan `git add web/src` menyapu folder state tool agent (sekitar 5 MB) ke dalam commit. Ketahuan saat audit terakhir, dan sempat ter-push ke fork saya. Saya menghapusnya dari **seluruh** history (dengan backup lebih dulu), force-push ke branch itu, memverifikasi tidak ada sisa di remote, dan baru setelah itu membuat PR. Sejak itu saya selalu `git add` per file. Isinya hanya log dan memori tool (tidak ada kredensial), tetapi seharusnya tidak pernah masuk repo.
+
+### 5.4 Data safety & migration
+
+| Migration | Keamanan |
+|---|---|
+| `add_generation_started_at_to_portfolios` | kolom nullable |
+| `add_status_to_fit_gap_reports` | default `complete` sehingga report lama tetap valid |
+| `add_organization_id_to_users` | nullable; backfill hanya bila tepat satu organisasi, selain itu tetap `NULL` dan login *fail closed* |
+
+Ketiganya dites `rollback` lalu migrate ulang. Migration terakhir juga dites untuk kedua kasus backfill (1 organisasi: terisi; 2 organisasi: tetap kosong).
+
+## 6. Claimed Engineering Depth: Backend-heavy
+
+**Backend-heavy.** Yang saya klaim, dan siap saya pertahankan dalam sesi teknis:
+
+- **Reliabilitas pipeline AI:** semantik retry, idempotensi job, terminal state, transaksi, dan lock baris dengan pengambilalihan setelah worker mati.
+- **Keamanan dan multi-tenancy:** pengikatan admin ke tenant, kesetaraan aturan HTTP dan WebSocket, revocation, pembatasan laju per-IP dan per-akun, batas ukuran pesan, dan rantai dependency.
+- **Koordinasi terdistribusi:** lock koneksi berbasis Redis dengan TTL, perpanjangan, kepemilikan lewat token, dan *fail-open*.
+- **Rekayasa proses:** test-first, seeded fault, CI, dan simulasi lingkungan CI.
+
+Sisi frontend adalah seam yang sengaja tipis: state gagal dan retry, form yang membatasi input sesuai API, dan interceptor yang tidak menghapus pesan error. Semuanya punya test regresi.
+
+## 7. Perubahan Antarmuka, Video & Batasan
+
+### 7.1 Perubahan Antarmuka
+
+Perubahan UI pada submission ini sengaja kecil dan berfokus pada **state kegagalan** yang sebelumnya tidak ada. Tiap state punya test regresi (vitest) dan bisa dicoba langsung dari branch `feat/be-hardening`.
+
+| Layar | Sebelumnya | Sekarang |
+|---|---|---|
+| Login | Salah password memicu reload halaman, pesan error hilang | Pesan error tetap tampil, tanpa reload |
+| Fit/Gap report | "Generating…" selamanya bila job gagal | State gagal dengan tombol "Try again"; polling berhenti |
+| Edit Vacancy / Assessment | Gagal load menampilkan form kosong yang bisa disimpan | Pesan gagal load dengan tombol coba lagi; form tidak tampil |
+| Portfolio | Halaman kosong bila gagal load | Pesan gagal load dengan tombol coba lagi |
+| Override rating | Catatan tanpa batas; API menolak dengan pesan generik | Batas 2.000 karakter, penghitung, dan tombol simpan nonaktif untuk catatan terlalu panjang |
+
+### 7.2 Video Demonstrasi
+
+Video walkthrough 3–5 menit: [https://www.loom.com/share/7793f2168932440384525a5d923dff7c](https://www.loom.com/share/7793f2168932440384525a5d923dff7c)
+
+### 7.3 Batasan & Rencana Lanjutan
+
+Yang sengaja tidak dikerjakan dan alasannya (rincian di `assessment/be-hardening.md`):
+
+| Item | Alasan | Langkah berikutnya |
+|---|---|---|
+| Upgrade Rails 7.0 → 7.2+ | Perubahan framework, bukan patch | Roadmap tersendiri dengan test end-to-end |
+| Revocation role `assessor` | Butuh webhook dari rakamin-api | Keputusan lintas-tim |
+| Invite token di query WS | Mengubah protokol FE dan BE | Pesan `auth` pertama, dengan test WS end-to-end |
+| Test perilaku middleware audio WS | Butuh harness WS dan Gemini palsu | Prioritas berikutnya |
+| Retensi dan hapus data kandidat | Butuh keputusan hukum dan produk | Diputuskan bersama Legal |
+| Cookie `HttpOnly` untuk JWT | Mengubah auth kedua sisi | Bersamaan dengan item invite token |
+
+## 8. Kesimpulan & Status Kesiapan
+
+Submission ini berupa **satu Pull Request** ([#141](https://github.com/rakamindev/ai-interview-platform/pull/141)) yang membuat pipeline AI gagal secara **eksplisit dan bisa dipulihkan**, menutup celah autentikasi dan tenant di HTTP maupun WebSocket, dan memasang harness test yang berjalan di CI.
+
+- **Terverifikasi:** 168 contoh RSpec dan 36 tes vitest lolos, `tsc` bersih, brakeman 0 warning, dan bundler-audit bersih. Setiap fix ditulis test-first dan dibuktikan lewat 17 seeded fault.
+- **Aman untuk data:** tiga migration reversible; backfill hanya bila tidak ambigu, selain itu *fail closed*.
+- **Jujur soal batas:** upgrade Rails 7.0, revocation role `assessor`, invite token di WebSocket, test perilaku middleware audio, dan kebijakan retensi data kandidat dieskalasi dan dicatat di bagian 7.3, bukan disembunyikan.
+
+Saya siap menjelaskan dan mempertahankan setiap keputusan, termasuk opsi yang ditolak, pada sesi technical defense.
+
+### 8.1 Cara Memverifikasi
+
+```
+cd api && bundle exec rspec          # 168 contoh
+cd web && npm test && npx tsc --noEmit
 ```
 
-1. **Seeded Fault Tenant Isolation (`scratch/seeded-fault-tenant-isolation`)**:
-   - **Injeksi**: Mencabut `include TenantScoped` dari model `Portfolio` (commit `ee4360e`).
-   - **Hasil**: RSpec langsung mendeteksi pelanggaran keamanan — **25 dari 33 test spec gagal (merah pekat)**, membuktikan tes request spec dan model spec secara presisi menangkap kebocoran IDOR.
-   - **Pemulihan**: Commit `6c088d4` mengembalikan `TenantScoped` ➔ seluruh 33 test hijau kembali.
-2. **Seeded Fault Not-Assessed State (`scratch/seeded-fault-not-assessed-skill`)**:
-   - **Injeksi**: Memaksa skor default ke `1` untuk skill yang tidak diuji.
-   - **Hasil**: Vitest menangkap anomali — komponen menolak menampilkan level angka pada status `not_assessed`.
-
----
-
-## 7. Claimed Engineering Depth
-
-### ⚖️ Fullstack Engineering Balance (Monozukuri Craftsmanship)
-Kami mengklaim kedalaman rekayasa **Fullstack Seimbang (*Balanced Fullstack Depth*)**:
-
-1. **Backend & AI Architecture Depth**:
-   - Membangun middleware WebSocket asinkron berbasis EventMachine yang menangani audio streaming dua arah 16kHz PCM dengan *silence pump generator*, *adaptive speech gate*, dan sanitasi biner.
-   - Mengimplementasikan HTTP Client tangguh dengan *Exponential Backoff Retry* (menghadapi kuota rate-limit 429) dan *Multi-Model Fallback Pipeline*.
-   - Menerapkan isolasi multi-tenant pada level PostgreSQL schema qualification dan ORM default scope.
-2. **Frontend & UX Craftsmanship Depth**:
-   - Mengembangkan *Unified Session Hub* berbasis tab responsif dengan auto-loading laporan Fit/Gap.
-   - Merancang komponen *SearchableSelect Combobox* dengan live filtering, aksesibilitas keyboard, dan reset cepat.
-   - Mengimplementasikan *Radix Dialog Modal Override Rating* dengan rubric L1–L5 interaktif, input catatan assessor, dan *live audit trail banner*.
-   - Menyediakan fitur *Direct Iframe PDF Download* untuk transkrip sesi resmi tanpa membuka tab baru.
-
----
-
-## 8. Visual Showcase & UI Polish
-
-*(Berikut adalah referensi tangkapan layar antarmuka yang dapat disematkan langsung saat mencetak laporan PDF)*
-
-### 1. Halaman Login Assessor & Identity Branding
-- Container kartu elegan dengan background depth, toggle show/hide password, autofill credential helper, dan logo resmi Rakamin.
-
-### 2. Antarmuka Wawancara Suara Live Kandidat
-- Visualizer audio waveform 5-bar dinamis, sinkronisasi timer server, dan gelembung transkrip percakapan Bahasa Indonesia yang bersih dari sintaks biner.
-
-### 3. Unified Session Hub (Tab 1: Evaluasi Skill)
-- Menampilkan kartu kompetensi L1–L5, bukti kutipan wawancara (*evidence*), badge `Belum Diuji` untuk skill yang tidak terjangkau, dan kotak **Jejak Audit Assessor** (*Assessor Override Banner*).
-
-### 4. Modal Penyesuaian Nilai (*Override Rating Dialog*)
-- Popup modal terpusat dengan panduan rubrik L1–L5, indikator keyakinan AI baseline, dan textarea alasan penilaian assessor.
-
-### 5. Unified Session Hub (Tab 2: Kecocokan Lowongan Benchmark)
-- Pemilih lowongan dinamis *SearchableSelect Combobox*, tabel komparasi skor kandidat vs target role, dan narasi analisis kultur perusahaan.
-
-### 6. Unified Session Hub (Tab 3: Transkrip & Export PDF)
-- Rekaman dialog suara utuh dan tombol unduh langsung laporan PDF resmi transkrip wawancara.
-
----
-
-## 9. Conclusion & Submission Readiness
-
-Seluruh 10 Pull Request telah siap dan teruji secara menyeluruh. Platform **AI Interview Rakamin** kini berada dalam kondisi prima: aman dari celah multi-tenant IDOR, akurat dalam representasi penilaian AI tanpa memalsukan skor, stabil dalam streaming suara real-time, dan memberikan pengalaman pengguna kelas dunia bagi recruiter maupun kandidat.
-
----
-*Laporan ini disusun secara profesional sebagai bagian dari Technical Submission Fullstack Assessment Rakamin.*
+CI (`.github/workflows/ci.yml`) menjalankan RSpec, `tsc`, vitest, brakeman, dan bundler-audit pada setiap PR. Bukti seeded fault ada di branch `scratch/seeded-fault-*` pada fork `Vputri/ai-interview-platform`.
