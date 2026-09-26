@@ -126,6 +126,10 @@ module Api
 
         return json_response(ended: true, message: "Session already ended") if session.ended?
 
+        # Only a session the candidate actually started can be auto-ended here;
+        # otherwise anyone holding an unused invite link could burn the interview.
+        return json_error("Session has not started", :conflict) unless session.active?
+
         # No coverage re-check here. The backend WS already verified all_covered
         # before sending preparing_to_end. Re-checking here caused false negatives
         # (timing gap between WS detection and HTTP call) that stalled auto-end.

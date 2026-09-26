@@ -104,6 +104,16 @@ RSpec.describe "Api::V1::Sessions", type: :request do
       expect(PortfolioGeneratorWorker.jobs.size).to eq(1)
     end
 
+    it "does not end a session that never started (a leaked invite link must not burn the interview)" do
+      unstarted = create(:session, assessment: own_assessment, status: "pending", ended_at: nil)
+
+      post "/api/v1/sessions/#{unstarted.invite_token}/audio_complete"
+
+      expect(response).to have_http_status(:conflict)
+      expect(unstarted.reload).to be_pending
+      expect(PortfolioGeneratorWorker.jobs).to be_empty
+    end
+
     it "returns 404 for an unknown token" do
       post "/api/v1/sessions/nope/audio_complete"
 

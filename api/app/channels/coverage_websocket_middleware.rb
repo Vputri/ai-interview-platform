@@ -123,9 +123,10 @@ class CoverageWebSocketMiddleware
   end
 
   def authenticate_assessor_by_token(token, session_id)
-    payload = JsonWebToken.decode(token)
+    # Same rules as the HTTP API: signed token, assessor/admin role, account not deactivated.
+    claims = AuthorizeApiRequest.new({ 'Authorization' => "Bearer #{token}" }, %w[assessor]).call[:claims]
 
-    org = Organization.find_by(scheme: payload[:scheme])
+    org = Organization.find_by(scheme: claims[:scheme])
     return [nil, 'Invalid tenant'] unless org
 
     session = Session.unscoped.where(tenant_id: org.id).find_by(id: session_id)
@@ -133,7 +134,8 @@ class CoverageWebSocketMiddleware
 
     [session, nil]
   rescue => e
-    [nil, "Authentication failed: #{e.message}"]
+    Rails.logger.info("[CoverageWS] auth rejected (#{e.class})")
+    [nil, 'Authentication failed']
   end
 
   def coverage_json(map)

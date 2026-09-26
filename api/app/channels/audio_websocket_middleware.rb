@@ -737,9 +737,9 @@ class AudioWebSocketMiddleware
   def authenticate_and_load(env, session_id)
     request = Rack::Request.new(env)
 
-    session = begin
-      invite_token = request.params['token']
+    invite_token = request.params['token']
 
+    session = begin
       if invite_token.present?
         Session.unscoped.find_by(invite_token: invite_token)
       else
@@ -747,18 +747,22 @@ class AudioWebSocketMiddleware
         return [nil, 'Missing authorization'] unless auth_header.present?
 
         token = auth_header.split(' ').last
-        payload = JsonWebToken.decode(token)
+        # Same rules as the HTTP API: signed token, assessor/admin role, account not deactivated.
+        payload = AuthorizeApiRequest.new({ 'Authorization' => "Bearer #{token}" }, %w[assessor]).call[:claims]
         tenant_id = Organization.find_by(scheme: payload[:scheme])&.id
         return [nil, 'Invalid tenant'] unless tenant_id
 
         Session.unscoped.where(tenant_id: tenant_id).find_by(id: session_id)
       end
     rescue StandardError => e
-      return [nil, "Authentication failed: #{e.message}"]
+      Rails.logger.info("[AudioWS] auth rejected (#{e.class})")
+      return [nil, 'Authentication failed']
     end
 
     return [nil, 'Session not found'] unless session
     return [nil, 'Session has ended'] if session.ended?
+    # Same expiry rule as GET /sessions/:token/candidate — the WS must not be a way around it.
+    return [nil, 'Invite expired'] if invite_token.present? && session.invite_expired?
     return [nil, 'Session ID mismatch'] if session.id.to_s != session_id
 
     [session, nil]

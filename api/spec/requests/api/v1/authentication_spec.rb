@@ -80,7 +80,7 @@ RSpec.describe "Api::V1::Authentication", type: :request do
     end
 
     it "issues a token scoped to the tenant that was asked for, not the first organization" do
-      create(:organization, scheme: "aaa-first")
+      create(:organization, name: "AAA First", scheme: "aaa-first", identifier: "aaa-first", host: "aaa-first.example.com")
       login("admin@example.com", "password123")
 
       claims = JsonWebToken.decode(JSON.parse(response.body)["token"])
