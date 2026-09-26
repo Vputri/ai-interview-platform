@@ -3,9 +3,13 @@
 module Api
   module V1
     class AuthenticationController < ApiController
-      skip_before_action :require_tenant!
-
       # POST /api/v1/auth/login
+      #
+      # The tenant comes from TenantResolverMiddleware (X-Tenant-Scheme header,
+      # or the Referer host for the browser app) and require_tenant! rejects the
+      # request when none resolves. It must never fall back to "some" organization:
+      # admins live in a global users table, so a guessed tenant would hand out a
+      # token for another company's candidate data.
       def authenticate
         user = User.find_by(email: params[:email].to_s.downcase)
 
@@ -13,19 +17,9 @@ module Api
 
         return json_error('Invalid email or password', :unauthorized) unless user.role == 'admin' && user.active?
 
-        scheme = resolve_scheme
-        token  = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: })
+        token = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: current_organization.scheme })
 
         json_response({ token:, user: { id: user.id, email: user.email, role: user.role } })
-      end
-
-      private
-
-      def resolve_scheme
-        request.headers['X-Tenant-Scheme'].presence ||
-          ActiveRecord::Base.connection.select_value(
-            'SELECT scheme FROM organizations LIMIT 1'
-          ) || 'test-corp'
       end
     end
   end
